@@ -1,6 +1,6 @@
 # Retrieval Duel
 
-**Vector RAG vs GraphRAG vs Hybrid, side by side.** A hands-on tutorial app: load a set of documents, watch both kinds of retrieval index them, then ask questions and watch each one search, with the evidence it found laid out so you can judge. It generates test questions designed to expose each method's strengths and blind spots, and grades the answers.
+**This app compares Vector RAG vs GraphRAG vs Hybrid, side by side.** It's also a hands-on tutorial: load a set of documents, watch both kinds of retrieval index them, then ask questions and watch each one search, with the evidence it found laid out so you can judge. It generates test questions designed to expose each method's strengths and blind spots, and grades the answers.
 
 It's built for learning, not production. Everything is small, visible and explained.
 
