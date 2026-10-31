@@ -434,7 +434,7 @@ def ask(slug, question, sample_id=None):
             "vector": lambda: qa.answer(question, "passages found by vector search", v["context"], meter),
             "graph": lambda: qa.answer(question, "community summaries" if g["mode"] == "global" else "facts from a knowledge graph", g["context"], meter),
             "hybrid": lambda: qa.answer(question, "merged search results", merged, meter),
-            "agent": lambda: agent.run(question, ds.vindex(), gi, planner=agent.ClaudePlanner(gi, agent_meter),
+            "agent": lambda: agent.run(question, ds.vindex(), gi, planner=agent.ClaudePlanner(gi, agent_meter, about=f"{ds.meta.get('name', '')}. {ds.meta.get('description', '')}"),
                                        top_k=top_k, meter=agent_meter),
         }
         times = {}

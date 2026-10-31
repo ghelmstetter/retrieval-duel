@@ -29,7 +29,8 @@ Return JSON only:
 {"rewritten": "the question rephrased with likely document vocabulary",
  "why": "one plain sentence a beginner would understand",
  "actions": [{"tool": "vector", "query": "..."} | {"tool": "graph", "entities": ["exact names from the list"]} | {"tool": "summaries"}]}
-Use one or two actions."""
+Use one or two actions. Use the collection description to understand the setting (for example, the name of
+the place the documents are about). Never invent names, places or facts that aren't in the description or the entity list."""
 
 CHECK_SYSTEM = """You are checking whether gathered evidence is enough to answer a question well.
 Return JSON only:
@@ -47,13 +48,16 @@ ANSWER_SYSTEM = qa.ANSWER_SYSTEM + """
 class ClaudePlanner:
     kind = "claude"
 
-    def __init__(self, gi, meter):
+    def __init__(self, gi, meter, about=""):
         self.gi, self.meter = gi, meter
         ents = sorted(gi.entities, key=lambda e: -len(gi.adj.get(e["id"], [])))[:200]
         self.names = ", ".join(e["name"] for e in ents)
+        # What the collection is about: its description plus the topic summaries, so the planner knows the setting.
+        topics = "\n".join(f"- {c['title']}: {c['summary']}" for c in gi.communities if c.get("summary"))[:3000]
+        self.context = f"About this document collection: {about}\nTopics in it:\n{topics}" if (about or topics) else ""
 
     def plan(self, question):
-        user = f"Question: {question}\n\nEntity names in the graph:\n{self.names}"
+        user = f"Question: {question}\n\n{self.context}\n\nEntity names in the graph:\n{self.names}"
         try:
             r = llm.complete_json(PLAN_SYSTEM, user, task="agent_plan", max_tokens=500, meter=self.meter)
             acts = [a for a in r.get("actions") or [] if isinstance(a, dict) and a.get("tool") in ("vector", "graph", "summaries")][:2]
@@ -63,7 +67,7 @@ class ClaudePlanner:
             return RulesPlanner(self.gi).plan(question)
 
     def check(self, question, evidence_text, done):
-        user = (f"Question: {question}\n\nSearches already done:\n" + "\n".join(f"- {d}" for d in done) +
+        user = (f"Question: {question}\n\n{self.context}\n\nSearches already done:\n" + "\n".join(f"- {d}" for d in done) +
                 f"\n\nEntity names in the graph:\n{self.names}\n\nEvidence so far:\n{evidence_text[:12000]}")
         try:
             r = llm.complete_json(CHECK_SYSTEM, user, task="agent_check", max_tokens=400, meter=self.meter)
