@@ -4,6 +4,8 @@
 
 It's built for learning, not production. Everything is small, visible and explained.
 
+![Retrieval Duel: vector RAG and GraphRAG searching the same documents side by side, with the passages each one retrieved and a third Hybrid answer](docs/images/duel.png)
+
 ## What's inside
 
 1. **Basics**: an 8-screen walkthrough for people who've never heard of RAG.
