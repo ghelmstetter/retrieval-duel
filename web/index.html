@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Retrieval Duel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a "duel stage" of two live panels (vector map | knowledge graph) under a 4-step lesson rail. Single dark look, by choice: the retrieval glows. */
+:root{
+  color-scheme: dark;
+  --ink:#0b1424; --deck:#101c31; --deck2:#14233c; --line:#233554; --line2:#2d4468;
+  --fg:#e9eef7; --muted:#8fa0bd; --faint:#5f7193;
+  --vec:#3fd6c8; --vec-dim:rgba(63,214,200,.14);
+  --graph:#ffb547; --graph-dim:rgba(255,181,71,.14);
+  --query:#ff5f8f; --ok:#6be38b; --bad:#ff6b6b; --tie:#b6c2d9;
+  --display:'Unbounded', 'Arial Black', system-ui, sans-serif;
+  --body:'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--ink)}
+body{color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
+  background-image:radial-gradient(circle at 1px 1px, rgba(143,160,189,.09) 1px, transparent 0);background-size:22px 22px;}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--query);outline-offset:2px}
+mark{background:rgba(63,214,200,.22);color:var(--fg);border-radius:3px;padding:0 2px}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.brand h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,40px);letter-spacing:-.01em;margin:0;line-height:1;text-wrap:balance}
+.brand h1 .v{color:var(--vec)} .brand h1 .g{color:var(--graph)} .brand h1 .x{color:var(--faint);font-weight:500;font-size:.6em;vertical-align:.25em;margin:0 .25em}
+.brand p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.proto{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--query);border:1px solid rgba(255,95,143,.4);padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
+nav.steps{display:flex;gap:6px;flex-wrap:wrap}
+nav.steps button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:center;color:var(--muted);font-weight:600}
+nav.steps button .n{font-family:var(--mono);font-size:12px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line2)}
+nav.steps button[aria-current="step"]{color:var(--fg);border-color:var(--fg);background:var(--deck)}
+nav.steps button[aria-current="step"] .n{background:var(--fg);color:var(--ink);border-color:var(--fg)}
+nav.steps button:disabled{opacity:.4;cursor:not-allowed}
+
+/* step body */
+.step{display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+h2{font-family:var(--display);font-weight:700;font-size:22px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h3{font-size:15px;margin:0;font-weight:700}
+.lede{color:var(--muted);max-width:72ch;margin:0}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{background:var(--fg);color:var(--ink);border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* datasets */
+.datasets{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.ds{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--deck);display:flex;flex-direction:column;gap:6px;min-width:0}
+.ds.on{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg) inset}
+.ds .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.ds.on .tag{color:var(--ok)}
+.ds p{margin:0;color:var(--muted);font-size:13.5px}
+.reader{display:grid;grid-template-columns:minmax(0,280px) minmax(0,1fr);gap:12px;border:1px solid var(--line);border-radius:12px;background:var(--deck);overflow:hidden}
+.reader ol{list-style:none;margin:0;padding:6px;max-height:230px;overflow:auto;border-right:1px solid var(--line)}
+.reader li button{width:100%;text-align:left;background:none;border:0;padding:6px 8px;border-radius:8px;color:var(--muted);font-size:13.5px;display:flex;gap:8px}
+.reader li button .d{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:46px}
+.reader li button[aria-pressed="true"]{background:var(--deck2);color:var(--fg)}
+.reader article{padding:14px 16px 16px 4px;min-width:0}
+.reader article h3{font-family:var(--display);font-weight:500;font-size:16px;margin-bottom:6px}
+.reader article p{margin:0;color:var(--fg);max-width:64ch}
+.reader article .src{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:8px}
+.log{font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.log b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.log .live{color:var(--fg)}
+
+/* stage */
+.stage{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.panel{position:relative;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,var(--deck),#0d182b);overflow:hidden;min-width:0}
+.panel.vec{box-shadow:inset 0 2px 0 var(--vec)} .panel.gr{box-shadow:inset 0 2px 0 var(--graph)}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:12px 14px 0;flex-wrap:wrap}
+.ph h3{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.01em}
+.vec .ph h3{color:var(--vec)} .gr .ph h3{color:var(--graph)}
+.ph .meta{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.panel svg{display:block;width:100%;height:auto}
+.overlay{position:absolute;left:14px;right:14px;bottom:12px;font-family:var(--mono);font-size:12px;color:var(--muted);pointer-events:none;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line2);border-radius:99px;padding:2px 8px;background:rgba(11,20,36,.8);color:var(--fg)}
+.chip.q{border-color:rgba(255,95,143,.6);color:#ffc2d4}
+.chip.warn{border-color:rgba(255,107,107,.6);color:#ffb3b3}
+.tip{position:absolute;pointer-events:none;max-width:280px;background:#0a1220;border:1px solid var(--line2);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.4;color:var(--fg);box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:3}
+.tip .t{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:3px}
+svg text{font-family:var(--body)}
+.nlabel{font-size:10.5px;fill:var(--muted);paint-order:stroke;stroke:#0d182b;stroke-width:3px;pointer-events:none}
+.hlabel{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;pointer-events:none}
+.elabel{font-family:var(--mono);font-size:9.5px;fill:#ffd9a0;paint-order:stroke;stroke:#0d182b;stroke-width:3px;pointer-events:none}
+
+/* question deck */
+.deck{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.qcard{text-align:left;background:var(--deck);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;min-width:0;transition:border-color .15s,transform .15s}
+.qcard:hover{border-color:var(--line2);transform:translateY(-1px)}
+.qcard[aria-pressed="true"]{border-color:var(--query);background:#1a1c33}
+.qcard .ty{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:6px}
+.qcard .ty .done{color:var(--ok)}
+.qcard .qq{font-size:13.5px;color:var(--fg)}
+.ask{display:flex;gap:8px;flex-wrap:wrap}
+.ask input{flex:1 1 320px;min-width:0;background:var(--deck);border:1px solid var(--line2);border-radius:10px;padding:11px 14px;color:var(--fg);font:inherit;font-size:15.5px}
+.ask input::placeholder{color:var(--faint)}
+.predict{font-size:13.5px;color:var(--muted)}
+.predict b{color:var(--fg)}
+
+/* answers */
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ans{border:1px solid var(--line);border-radius:14px;background:var(--deck);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.ans.vec{border-top:2px solid var(--vec)} .ans.gr{border-top:2px solid var(--graph)}
+.ans .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ans .who span:first-child{font-family:var(--display);font-weight:700;font-size:13px}
+.ans.vec .who span:first-child{color:var(--vec)} .ans.gr .who span:first-child{color:var(--graph)}
+.ans .text{font-size:15.5px;line-height:1.55;min-height:3em}
+.ans .text .cursor{display:inline-block;width:7px;height:1em;background:var(--fg);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.ans .note{font-size:12px;color:var(--faint)}
+.meters{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.meters .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.meters .bar i{display:block;height:100%;border-radius:3px;transition:width .6s ease}
+.ans.vec .bar i{background:var(--vec)} .ans.gr .bar i{background:var(--graph)}
+.meters .num{font-variant-numeric:tabular-nums;color:var(--fg);text-align:right}
+details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.evlist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.evlist li{font-size:13px;line-height:1.45;border-left:2px solid var(--line2);padding:2px 0 2px 10px;color:var(--muted)}
+.evlist li .s{font-family:var(--mono);font-size:11px;color:var(--vec);margin-right:6px;font-variant-numeric:tabular-nums}
+.evlist li.path{border-left-color:var(--query);color:var(--fg)}
+.evlist li.comm{color:var(--fg)}
+.evlist li .src{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+/* verdict */
+.verdict{border:1px solid var(--line);border-radius:14px;background:var(--deck);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.votes{display:flex;flex-wrap:wrap;gap:8px}
+.votes button{border:1px solid var(--line2);background:transparent;border-radius:10px;padding:8px 14px;font-weight:600}
+.votes button[data-v="vector"]{color:var(--vec)} .votes button[data-v="graph"]{color:var(--graph)}
+.votes button[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg)}
+.lesson{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:16px;border-top:1px dashed var(--line2);padding-top:12px}
+.lesson p{margin:0;max-width:70ch}
+.lesson .rule{border:1px solid var(--line2);border-radius:12px;padding:12px;background:var(--deck2)}
+.lesson .rule .eyebrow{margin-bottom:4px}
+.lesson .rule p{font-weight:600}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid}
+.pill.vector{color:var(--vec);border-color:var(--vec)} .pill.graph{color:var(--graph);border-color:var(--graph)} .pill.tie{color:var(--tie);border-color:var(--tie)}
+.pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--bad);border-color:var(--bad)}
+.score{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+/* profile & debrief */
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--deck);padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.big{font-family:var(--display);font-weight:700;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.stats{display:flex;flex-wrap:wrap;gap:6px 22px}
+.stats div{display:flex;flex-direction:column}
+.stats b{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.stats span{font-family:var(--mono);font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em}
+.costbars{display:flex;flex-direction:column;gap:8px}
+.costbars .cb{display:grid;grid-template-columns:70px minmax(0,1fr) 84px;gap:8px;align-items:center;font-family:var(--mono);font-size:12px}
+.costbars .track{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.costbars .track i{display:block;height:100%}
+.types{width:100%;border-collapse:collapse;font-size:13.5px}
+.types th,.types td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.types th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:400}
+.types td:first-child{font-weight:700;white-space:nowrap}
+.types td.q{color:var(--muted)}
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--deck)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px}
+.card.vecc h3{color:var(--vec)} .card.grc h3{color:var(--graph)}
+.card ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:5px;font-size:14px}
+
+.intro{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,var(--deck),#0d182b);overflow:hidden}
+.slide{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:28px;padding:28px 28px 8px;min-height:430px;align-items:center}
+.slide .copy{display:flex;flex-direction:column;gap:12px;min-width:0}
+.slide h2{font-size:clamp(22px,2.6vw,30px);line-height:1.15}
+.slide p{margin:0;font-size:16.5px;line-height:1.6;color:#cfd8e8;max-width:56ch}
+.slide p.small{font-size:14px;color:var(--muted)}
+.slide ol.how{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:7px;font-size:15.5px;color:#cfd8e8;max-width:56ch}
+.slide .catch{border-left:3px solid var(--query);padding:6px 0 6px 12px;font-size:15px;color:var(--fg);max-width:56ch}
+.slide .visual{min-width:0;display:flex;flex-direction:column;gap:10px;justify-content:center}
+.slide svg{width:100%;height:auto;display:block}
+.term{color:var(--fg);font-weight:700}
+.term.v{color:var(--vec)} .term.g{color:var(--graph)}
+.chat{display:flex;flex-direction:column;gap:10px}
+.bub{max-width:88%;padding:11px 14px;border-radius:14px;font-size:15px;line-height:1.45}
+.bub.you{align-self:flex-end;background:#1f3150;border-bottom-right-radius:4px}
+.bub.ai{align-self:flex-start;background:var(--deck2);border:1px solid var(--line2);border-bottom-left-radius:4px;color:#cfd8e8}
+.bub .who{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.pipe{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-items:stretch}
+.pipe div{border:1px solid var(--line2);border-radius:12px;padding:12px 8px;text-align:center;font-size:13px;display:flex;flex-direction:column;gap:4px;justify-content:center;background:var(--deck2);position:relative}
+.pipe div b{font-size:14px}
+.pipe div.hot{border-color:var(--query);box-shadow:0 0 0 1px var(--query) inset,0 0 24px rgba(255,95,143,.25)}
+.pipe div span{color:var(--muted);font-size:12px}
+.pipelabel{font-family:var(--mono);font-size:11px;color:var(--query);text-align:center;letter-spacing:.06em}
+.vs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vs .card h3{font-family:var(--display);font-size:14px}
+.vs ul{font-size:14px}
+.vs li.plus::marker{content:"+  ";color:var(--ok)} .vs li.minus::marker{content:"–  ";color:var(--bad)}
+.road{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.road div{border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--deck2);font-size:13.5px;color:var(--muted)}
+.road div b{display:block;color:var(--fg);font-size:14.5px;margin-bottom:2px}
+.road div .n{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.slidenav{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 28px 22px;flex-wrap:wrap}
+.dots{display:flex;gap:6px}
+.dots button{width:28px;height:6px;border-radius:3px;border:0;background:var(--line2);padding:0}
+.dots button[aria-current="true"]{background:var(--fg)}
+.dots button.seen{background:#4b6189}
+.cta{border:1px solid var(--line2);border-radius:16px;background:linear-gradient(135deg,#132541,#101c31 60%);padding:18px;display:flex;flex-direction:column;gap:16px;box-shadow:0 0 0 1px rgba(255,95,143,.12),0 10px 40px rgba(0,0,0,.25)}
+.cta-how{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cta-how p{margin:4px 0 0;color:#cfd8e8;font-size:14.5px;max-width:52ch}
+.cta-go{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.btn.big{font-size:16px;padding:14px 22px;border-radius:12px;background:var(--query);color:#1a0a12;box-shadow:0 0 28px rgba(255,95,143,.35)}
+.btn.big:not(.ghost):not(:disabled){animation:ctaPulse 1.8s ease-in-out infinite}
+@keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,95,143,.55),0 0 28px rgba(255,95,143,.35);transform:scale(1)}50%{box-shadow:0 0 0 12px rgba(255,95,143,0),0 0 40px rgba(255,95,143,.55);transform:scale(1.03)}}
+.btn.big.ghost{background:transparent;color:var(--fg);box-shadow:none;border:1px solid var(--line2)}
+.cta-note{color:var(--muted);font-size:13px;max-width:60ch}
+.peek summary{cursor:pointer;color:var(--muted);font-size:14px;margin-bottom:8px}
+.empty{position:absolute;left:0;right:0;top:90px;bottom:30px;display:grid;place-items:center;text-align:center;font-family:var(--mono);font-size:12.5px;color:var(--faint);pointer-events:none;letter-spacing:.04em}
+.empty b{display:block;font-family:var(--display);font-size:15px;color:var(--muted);letter-spacing:0;margin-bottom:4px}
+@media (max-width:820px){ .cta-how{grid-template-columns:1fr} }
+.router{border:1px solid var(--line2);border-radius:14px;background:var(--deck);padding:12px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.router .rlabel{font-family:var(--display);font-weight:700;font-size:13px;background:linear-gradient(90deg,var(--vec),var(--graph));-webkit-background-clip:text;background-clip:text;color:transparent}
+.router .arrow{color:var(--faint);font-family:var(--mono)}
+.route{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:99px;border:1px solid var(--line2);color:var(--faint);transition:all .3s}
+.route.on.vector{color:var(--ink);background:var(--vec);border-color:var(--vec)}
+.route.on.graph{color:var(--ink);background:var(--graph);border-color:var(--graph)}
+.route.on.both{color:var(--ink);background:linear-gradient(90deg,var(--vec),var(--graph));border-color:transparent}
+.router .why{color:var(--muted);font-size:13.5px;flex:1 1 260px;min-width:0}
+.ans.hy{border-top:0;position:relative}
+.ans.hy::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--vec),var(--graph))}
+.ans.hy .who span:first-child{background:linear-gradient(90deg,var(--vec),var(--graph));-webkit-background-clip:text;background-clip:text;color:transparent}
+.ans.hy .bar i{background:linear-gradient(90deg,var(--vec),var(--graph))}
+.hymeta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:16px;align-items:start}
+.routes{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.routes .box{border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--deck2);text-align:center;font-size:14px}
+.routes .box.r{border-color:var(--query);box-shadow:0 0 22px rgba(255,95,143,.2)}
+.routes .down{text-align:center;color:var(--faint);font-family:var(--mono);line-height:1}
+.routes .branches{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.routes .branches div{border-radius:12px;padding:10px;font-size:12.5px;color:var(--muted);background:var(--deck2);border:1px solid var(--line2);display:flex;flex-direction:column;gap:4px}
+.routes .branches b{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+@media (max-width:820px){ .hymeta{grid-template-columns:1fr} .routes .branches{grid-template-columns:1fr} }
+.ds{cursor:pointer;text-align:left;font:inherit;color:inherit;position:relative}
+.ds:hover{border-color:var(--line2)}
+.ds.add{border-style:dashed;align-items:flex-start;justify-content:center}
+.ds.add h3{color:var(--query)}
+.ds .del{position:absolute;top:8px;right:8px;background:none;border:0;color:var(--faint);font-size:12px;padding:4px 6px;border-radius:6px}
+.ds .del:hover{color:var(--bad);background:var(--deck2)}
+.ds .st{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.ds .st.ready{color:var(--ok)} .ds .st.error{color:var(--bad)} .ds .st.indexing{color:var(--graph)}
+.upload{border:1px solid var(--line2);border-radius:16px;background:var(--deck);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.ufields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,260px);gap:12px}
+.upload label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.upload input,.upload select{background:var(--ink);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;color:var(--fg);font:inherit}
+.drop{border:1.5px dashed var(--line2);border-radius:12px;padding:18px;align-items:center;text-align:center;cursor:pointer}
+.drop.over{border-color:var(--query);background:#1a1c33}
+.drop input{display:none}
+.drop b{color:var(--fg);font-size:15px}
+#upList{color:var(--fg);font-family:var(--mono);font-size:12px}
+.estimate{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13.5px;color:var(--muted)}
+.estimate b{color:var(--fg);font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums;display:block}
+.estimate .warn{color:var(--bad);flex-basis:100%}
+.stages{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center;font-size:13px}
+.stages .lbl{color:var(--muted)} .stages .lbl.on{color:var(--fg);font-weight:600} .stages .lbl.done{color:var(--ok)}
+.stages .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.stages .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--vec),var(--graph));transition:width .3s}
+.stages .n{font-family:var(--mono);font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.errbox{border:1px solid rgba(255,107,107,.5);background:rgba(255,107,107,.08);color:#ffd0d0;border-radius:12px;padding:10px 14px;font-size:14px}
+.proto.live{color:var(--ok);border-color:rgba(107,227,139,.5)}
+.pill.partial{color:var(--graph);border-color:var(--graph)} .pill.unknown{color:var(--faint);border-color:var(--faint)}
+@media (max-width:820px){ .ufields{grid-template-columns:1fr} }
+.cap{padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.45}
+.cap b{color:var(--fg);font-weight:600}
+/* slide animations, replayed each time a slide opens */
+.anim .pop{opacity:0;animation:pop .5s ease forwards}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.anim .draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw .6s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.anim .ring{transform-box:fill-box;transform-origin:center;animation:ring 1s ease-out forwards;opacity:0}
+@keyframes ring{from{transform:scale(.1);opacity:.9}to{transform:scale(1);opacity:.5}}
+.anim .lit{animation:lit .4s ease forwards}
+@keyframes lit{to{fill:#7ffff0;fill-opacity:1}}
+.anim .glow{animation:glowp .4s ease forwards}
+@keyframes glowp{to{stroke:#ff5f8f;stroke-width:3;stroke-opacity:1}}
+
+@media (max-width:980px){ .deck{grid-template-columns:repeat(2,minmax(0,1fr))} .grid3{grid-template-columns:1fr} }
+@media (max-width:820px){ .slide{grid-template-columns:1fr;padding:20px 18px 4px;min-height:0} .slidenav{padding:12px 18px 18px} .pipe{grid-template-columns:1fr} .stage,.answers,.two{grid-template-columns:1fr} .lesson{grid-template-columns:1fr} .reader{grid-template-columns:1fr} .reader ol{border-right:0;border-bottom:1px solid var(--line);max-height:170px} .reader article{padding:4px 16px 16px} }
+@media (max-width:460px){ .deck{grid-template-columns:1fr} nav.steps button .lbl{display:none} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} .anim .pop,.anim .ring{opacity:1} .anim .draw{stroke-dashoffset:0} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <div class="brand">
+    <h1><span class="v">Vector</span><span class="x">vs</span><span class="g">Graph</span></h1>
+    <p>Retrieval Duel: watch two kinds of RAG search the same documents, and learn which questions each one is built for. <span class="proto" id="liveChip">Checking…</span></p>
+  </div>
+  <nav class="steps" aria-label="Lesson steps">
+    <button data-step="basics" aria-current="step"><span class="n">1</span><span class="lbl">Basics</span></button>
+    <button data-step="load"><span class="n">2</span><span class="lbl">Load</span></button>
+    <button data-step="profile"><span class="n">3</span><span class="lbl">Profile</span></button>
+    <button data-step="duel"><span class="n">4</span><span class="lbl">Duel</span></button>
+    <button data-step="debrief"><span class="n">5</span><span class="lbl">Debrief</span></button>
+  </nav>
+</header>
+
+<!-- STEP 1 LOAD -->
+<section class="step" id="step-basics">
+  <div class="intro">
+    <div id="slide"></div>
+    <div class="slidenav">
+      <button class="btn ghost" id="prevSlide">Back</button>
+      <div class="dots" id="dots" aria-label="Slides"></div>
+      <button class="btn" id="nextSlide">Next</button>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="step-load" hidden>
+  <div class="eyebrow">Step 2 · Load a dataset</div>
+  <h2>Prepare the documents for searching</h2>
+  <p class="lede">Before either system can answer anything, it has to prepare the documents. This is called <b>indexing</b>, and it happens once, ahead of time. Start with the Larkspur Gazette, or add your own documents.</p>
+  <div class="datasets" id="datasets"></div>
+  <form class="upload" id="uploadBox" hidden>
+    <h3>Add your own documents</h3>
+    <div class="ufields">
+      <label>Name<input id="upName" placeholder="e.g. Our team wiki" required></label>
+      <label>Passage size<select id="upChunk"><option value="60">Short (about 60 words)</option><option value="120" selected>Medium (about 120 words)</option><option value="250">Long (about 250 words)</option></select></label>
+    </div>
+    <label class="drop" id="drop">
+      <input type="file" id="upFiles" multiple accept=".txt,.md,.markdown,.pdf,.json,.jsonl,.csv,.html">
+      <b>Choose files</b> or drop them here
+      <span>Text, Markdown, PDF, or JSON/JSONL with a "text" field per record. Keep it small while learning: 20 to 200 documents.</span>
+      <span id="upList"></span>
+    </label>
+    <p class="cta-note">Your files are stored on this computer. When you index them, their text is sent to Claude to build the knowledge graph.</p>
+    <div class="row"><button class="btn" type="submit" id="upGo">Add dataset</button><button class="btn ghost" type="button" id="upCancel">Cancel</button><span class="cta-note" id="upMsg"></span></div>
+  </form>
+  <div class="cta" id="cta">
+    <div class="cta-how">
+      <div><span class="eyebrow" style="color:var(--vec)">Vector side · quick and cheap</span><p id="howVec">Cut the articles into short passages and give each one coordinates on the map of meaning.</p></div>
+      <div><span class="eyebrow" style="color:var(--graph)">Graph side · slow and costly</span><p id="howGraph">An AI reads each article and writes down the people, places and things in it and how they connect. Then it groups them into communities and summarizes each group.</p></div>
+    </div>
+    <div class="estimate" id="estimate" hidden></div>
+    <div class="cta-go">
+      <button class="btn big" id="indexBtn">Index</button>
+      <button class="btn big" id="toProfile" hidden>Next: Profile the data →</button>
+      <span class="cta-note" id="ctaNote"></span>
+    </div>
+    <div class="stages" id="stages" hidden></div>
+    <div class="log" id="log" hidden></div>
+  </div>
+  <details class="peek"><summary>Peek at the documents</summary>
+  <div class="reader">
+    <ol id="articleList"></ol>
+    <article id="articleView"></article>
+  </div></details>
+</section>
+
+<!-- STEP 2 PROFILE -->
+<section class="step" id="step-profile" hidden>
+  <div class="eyebrow">Step 3 · Profile the data</div>
+  <h2>What kind of corpus is this?</h2>
+  <p class="lede">Before asking anything, look at the shape of the data. These numbers predict where each system will do well.</p>
+  <div class="grid3" id="profileCards"></div>
+  <div class="tablebox"><table class="types" id="typesTable"></table></div>
+  <div class="row"><button class="btn big" data-goto="duel">Start the duel →</button></div>
+</section>
+
+<!-- STEP 3 DUEL -->
+<section class="step" id="step-duel" hidden>
+  <div class="eyebrow">Step 4 · Duel</div>
+  <h2>Ask one question, watch both retrieve</h2>
+  <p class="lede">Pick a card. Each one tests a different kind of question. Guess the winner first, then vote on which answer was better. A third contestant, <b>Hybrid</b>, answers too: its router looks at the question and decides whether to use vector search, the graph, or both.</p>
+  <div class="deck" id="deck"></div>
+  <form class="ask" id="askForm">
+    <label for="q" class="eyebrow" style="flex-basis:100%" id="qLabel">Or type your own question</label>
+    <input id="q" autocomplete="off" placeholder="e.g. Who opposes the seawall?">
+    <button class="btn" type="submit">Ask all three</button>
+  </form>
+  <div class="predict" id="predict"></div>
+  <div class="router" id="router" hidden>
+    <span class="rlabel">Hybrid router</span><span class="arrow">→</span>
+    <span class="route vector">Vector</span><span class="route both">Both</span><span class="route graph">Graph</span>
+    <span class="why" id="routeWhy"></span>
+  </div>
+</section>
+
+<!-- STAGE -->
+<div class="stage" id="stage">
+  <div class="panel vec" id="vecPanel">
+    <div class="ph"><h3>Vector RAG</h3><span class="meta" id="vecMeta">passages embedded and projected to 2D</span></div>
+    <div class="cap" style="padding-top:6px"><b>Each dot is one passage.</b> Dots close together say similar things. The pink dot is your question; the lit dots are the passages handed to the AI.</div>
+    <svg id="vecSvg" viewBox="0 0 600 430" role="img" aria-label="Map of document passages by similarity"></svg>
+    <div class="overlay" id="vecOverlay"></div>
+    <div class="empty" id="vecEmpty"><div><b>Not indexed yet</b>passages will appear here</div></div>
+  </div>
+  <div class="panel gr" id="grPanel">
+    <div class="ph"><h3>GraphRAG</h3><span class="meta" id="grMeta">entities, relations and communities</span></div>
+    <div class="cap" style="padding-top:6px"><b>Each circle is a person, place or thing; each line is a relationship.</b> Shaded areas are communities. Pink rings mark what your question named; amber lines are the connections followed.</div>
+    <svg id="grSvg" viewBox="0 0 600 430" role="img" aria-label="Knowledge graph of entities and relations"></svg>
+    <div class="overlay" id="grOverlay"></div>
+    <div class="empty" id="grEmpty"><div><b>Not indexed yet</b>the knowledge graph will grow here</div></div>
+  </div>
+</div>
+
+<section class="step" id="duelResults" hidden>
+  <div class="answers">
+    <div class="ans vec">
+      <div class="who"><span>Vector RAG answer</span><span class="pill" id="vecVerdict" hidden></span></div>
+      <div class="text" id="vecText"></div>
+      <div class="meters">
+        <span>context</span><div class="bar"><i id="vecBar" style="width:0"></i></div><span class="num" id="vecTok">0 tok</span>
+        <span>latency</span><div class="bar"><i id="vecLatBar" style="width:0"></i></div><span class="num" id="vecLat">0.0 s</span>
+      </div>
+      <details class="ev" open><summary>Evidence it retrieved</summary><ul class="evlist" id="vecEv"></ul></details>
+    </div>
+    <div class="ans gr">
+      <div class="who"><span>GraphRAG answer</span><span class="pill" id="grVerdict" hidden></span></div>
+      <div class="text" id="grText"></div>
+      <div class="meters">
+        <span>context</span><div class="bar"><i id="grBar" style="width:0"></i></div><span class="num" id="grTok">0 tok</span>
+        <span>latency</span><div class="bar"><i id="grLatBar" style="width:0"></i></div><span class="num" id="grLat">0.0 s</span>
+      </div>
+      <details class="ev" open><summary>Evidence it retrieved</summary><ul class="evlist" id="grEv"></ul></details>
+    </div>
+  </div>
+  <div class="ans hy">
+    <div class="who"><span>Hybrid answer · third contestant</span><span class="pill" id="hyVerdict" hidden></span></div>
+    <div class="hymeta">
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <div class="text" id="hyText"></div>
+        <div class="note" id="hyNote"></div>
+      </div>
+      <div class="meters">
+        <span>context</span><div class="bar"><i id="hyBar" style="width:0"></i></div><span class="num" id="hyTok">0 tok</span>
+        <span>latency</span><div class="bar"><i id="hyLatBar" style="width:0"></i></div><span class="num" id="hyLat">0.0 s</span>
+      </div>
+    </div>
+  </div>
+  <div class="verdict">
+    <div class="row" style="justify-content:space-between">
+      <h3>Which answer is better?</h3><span class="score" id="score"></span>
+    </div>
+    <div class="votes" id="votes">
+      <button data-v="vector">Vector</button><button data-v="tie">Tie</button><button data-v="graph">Graph</button><button data-v="neither">Both wrong</button>
+    </div>
+    <div class="lesson" id="lesson" hidden></div>
+  </div>
+  <p class="note" id="footnote" style="color:var(--faint);font-size:12px;margin:0"></p>
+</section>
+
+<!-- STEP 4 DEBRIEF -->
+<section class="step" id="step-debrief" hidden>
+  <div class="eyebrow">Step 5 · Debrief</div>
+  <h2>When to reach for which</h2>
+  <p class="lede" id="debriefLede"></p>
+  <div class="tablebox"><table class="types" id="resultsTable"></table></div>
+  <div class="two">
+    <div class="card vecc"><h3>Use vector RAG when…</h3><ul>
+      <li>You need one specific fact, number, date or quote.</li>
+      <li>The question is vague or topical and names no one.</li>
+      <li>Documents change often. Re-embedding is cheap.</li>
+      <li>Cost and speed matter more than completeness.</li></ul></div>
+    <div class="card grc"><h3>Use GraphRAG when…</h3><ul>
+      <li>The question chains relationships (A's B's C).</li>
+      <li>You need a complete list: "everyone connected to X."</li>
+      <li>You want themes or a summary of the whole collection.</li>
+      <li>The answer lives in a document that shares no words with the question.</li></ul></div>
+    <div class="card"><h3>Watch out for</h3><ul>
+      <li>Graph extraction drops dates, amounts and conditions, which leads to confident wrong answers.</li>
+      <li>Graph indexing costs many times more than embedding.</li>
+      <li>GraphRAG can't start without a named entity in the question.</li>
+      <li>Vector search returns a fixed top-k, so it truncates lists.</li></ul></div>
+    <div class="card"><h3>How to interrogate any new corpus</h3><ol>
+      <li>Ask a single-fact control question.</li>
+      <li>Ask a chained question across two documents.</li>
+      <li>Ask for a complete list.</li>
+      <li>Ask a big-picture question.</li>
+      <li>Ask a vague question with no names.</li>
+      <li>Ask something the corpus can't answer.</li>
+      <li>Compare the evidence, not just the answers.</li></ol></div>
+    <div class="card" style="grid-column:1/-1"><h3>Or combine them</h3>
+      <p>Because each approach's blind spots are the other's strengths, serious systems often use both. Common patterns:</p><ul>
+      <li><b>Routing:</b> check what kind of question it is, then send it to the right search. This is what Hybrid does in the duel.</li>
+      <li><b>Run both and merge:</b> search both ways and combine the results, often with a ranking model picking the best pieces. Rarely misses, costs more per question.</li>
+      <li><b>Graph-enhanced vector search:</b> find passages by meaning first, then follow graph connections out from the names in them. This fixes GraphRAG's "needs a name to start" problem. Popular GraphRAG tools such as Microsoft GraphRAG and LightRAG already blend the two internally.</li>
+      <li><b>Agentic retrieval:</b> give the AI both search tools and let it decide, step by step, which to use and when it has enough evidence.</li></ul>
+      <p><b style="color:var(--fg)">Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs), plus a ranking model. Full GraphRAG is used more selectively, where relationships really matter, because building the graph is expensive.</p></div>
+  </div>
+  <div class="row"><button class="btn ghost" id="resetVotes">Clear my votes</button><button class="btn big" data-goto="duel">Back to the duel →</button></div>
+</section>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
+<script src="/static/vendor/d3.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+ "name": "The Larkspur Gazette",
+ "description": "17 short news articles from an invented harbor town. Fictional, so the model can't answer from its training data.",
+ "created": 0,
+ "status": "ready",
+ "demo": true,
+ "chunk_words": 1,
+ "overlap": 0,
+ "embed": "tfidf",
+ "linking": "names",
+ "doc_count": 17,
+ "top_k": 4
+}

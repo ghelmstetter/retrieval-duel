@@ -1,0 +1,188 @@
+[
+ {
+  "id": "q1",
+  "type": "single_fact",
+  "label": "Single fact",
+  "q": "When does the Saltmarsh Ferry stop running for the winter?",
+  "answer": "It stops running on November 15 (and resumes April 1).",
+  "expect": "vector",
+  "sources": [],
+  "lesson": "Exact details like dates live in the original sentences. Graph extraction keeps who connects to whom and drops most numbers, so a plain passage lookup wins.",
+  "rule": "Looking up one specific fact? Use vector RAG.",
+  "canned": {
+   "vector": "The ferry stops running on November 15 and resumes on April 1.",
+   "graph": "The Saltmarsh Ferry is captained by Sadie Brandt and maintained by Brandt Boatworks. The graph doesn't record its schedule, so I can't give a date.",
+   "hybrid": "The ferry stops running on November 15 and resumes on April 1.",
+   "vector_ok": true,
+   "graph_ok": false,
+   "hybrid_ok": true
+  },
+  "path": [
+   "boatworks",
+   "ferry",
+   "sadie"
+  ]
+ },
+ {
+  "id": "q2",
+  "type": "multi_hop",
+  "label": "Multi-hop",
+  "q": "Which business is run by the sister of the Harbor Council chair?",
+  "answer": "The Brass Kettle cafe, run by Ines Quill, sister of council chair Mara Quill. She also organizes the Harvest Market.",
+  "expect": "graph",
+  "sources": [],
+  "lesson": "Both got it, but check the vector evidence: the passage that names the cafe ranked 4th, just inside the cutoff. With top-3 retrieval it would have been dropped. The graph walked chair → sister → owns as a path, so it didn't depend on luck.",
+  "rule": "Chained questions (A's B's C) are more reliable with GraphRAG.",
+  "canned": {
+   "vector": "Mara Quill chairs the Harbor Council. Her sister Ines Quill runs The Brass Kettle cafe on Front Street.",
+   "graph": "Mara Quill chairs the Harbor Council. Her sister, Ines Quill, owns The Brass Kettle cafe and also organizes the Harvest Market.",
+   "hybrid": "Mara Quill chairs the Harbor Council. Her sister, Ines Quill, owns The Brass Kettle cafe on Front Street and also organizes the Harvest Market.",
+   "vector_ok": true,
+   "graph_ok": true,
+   "hybrid_ok": true
+  },
+  "path": [
+   "council",
+   "mara",
+   "ines",
+   "kettle"
+  ]
+ },
+ {
+  "id": "q3",
+  "type": "hidden_link",
+  "label": "Hidden link",
+  "q": "Who is paying for the project that would bury the eelgrass beds?",
+  "answer": "Northgate Capital, which pledged money toward the seawall that would smother the eelgrass.",
+  "expect": "graph",
+  "sources": [],
+  "lesson": "The article about the money (\"Who pays for the wall?\") never mentions eelgrass, so it shares no words with the question and vector search never sees it. The vector answer then fills the gap with what it did find and confuses the proposer with the funder. The graph reaches Northgate in two hops.",
+  "rule": "When the answer sits in a document that shares no words with the question, use GraphRAG.",
+  "canned": {
+   "vector": "The retrieved passages say Councilor Amos Pike presented the $14 million seawall project, so Amos Pike appears to be behind it.",
+   "graph": "The seawall would smother the Gull Point eelgrass. Northgate Capital funds the seawall; Amos Pike proposed it.",
+   "hybrid": "Northgate Capital is paying for it. It funds the seawall, which would smother the Gull Point eelgrass. Amos Pike proposed the project.",
+   "vector_ok": false,
+   "graph_ok": true,
+   "hybrid_ok": true
+  },
+  "path": [
+   "eelgrass",
+   "seawall",
+   "northgate"
+  ]
+ },
+ {
+  "id": "q4",
+  "type": "comparison",
+  "label": "Comparison",
+  "q": "How do Otto Brandt and Amos Pike differ on the seawall?",
+  "answer": "Amos Pike proposed the seawall; Otto Brandt opposes it because it would cut his boatyard off from the water.",
+  "expect": "tie",
+  "sources": [],
+  "lesson": "Both are right, but the vector answer kept the reason and the price, and it used far less context. The graph pulled in many entities to answer a question about two people.",
+  "rule": "If each side lives in its own passage, vector RAG is cheaper and keeps more nuance.",
+  "canned": {
+   "vector": "Amos Pike proposed the $14 million seawall and objected to delaying the vote. Otto Brandt opposes it because it would cut his boatyard off from the water.",
+   "graph": "Amos Pike proposed the seawall. Otto Brandt opposes it.",
+   "hybrid": "Amos Pike proposed the $14 million seawall and objected to delaying the vote. Otto Brandt opposes it because it would cut his boatyard off from the water.",
+   "vector_ok": true,
+   "graph_ok": true,
+   "hybrid_ok": true
+  },
+  "path": [
+   "pike",
+   "seawall",
+   "otto"
+  ]
+ },
+ {
+  "id": "q5",
+  "type": "list",
+  "label": "Complete list",
+  "q": "List everyone connected to Gull Point.",
+  "answer": "Amos Pike, Northgate Capital, Felix Arden, Wen Liu, Juno Reyes, Mara Quill and Otto Brandt.",
+  "expect": "graph",
+  "sources": [],
+  "lesson": "Vector search returns a fixed number of passages (here 4), so any \"list all\" question gets cut off. The graph gathers every neighbor of Gull Point, however many articles they came from.",
+  "rule": "\"List every…\" questions favor GraphRAG.",
+  "canned": {
+   "vector": "Northgate Capital, which plans condos there, and Felix Arden, whose findings concern the eelgrass there. The other passages mention Gull Point without naming anyone.",
+   "graph": "Amos Pike (proposed the seawall there), Northgate Capital (condos, and money for the seawall), Felix Arden (eelgrass survey), Wen Liu (found the 1903 charter), Juno Reyes (champions the charter), Mara Quill (controls the seawall vote) and Otto Brandt (opposes the seawall).",
+   "hybrid": "Amos Pike (proposed the seawall there), Northgate Capital (condos, and money for the seawall), Felix Arden (eelgrass survey), Wen Liu (found the 1903 charter), Juno Reyes (champions the charter), Mara Quill (controls the seawall vote) and Otto Brandt (opposes the seawall).",
+   "vector_ok": false,
+   "graph_ok": true,
+   "hybrid_ok": true
+  },
+  "path": [
+   "gullpoint",
+   "seawall",
+   "condos",
+   "eelgrass",
+   "charter"
+  ]
+ },
+ {
+  "id": "q6",
+  "type": "big_picture",
+  "label": "Big picture",
+  "q": "What are the main conflicts in Larkspur Cove this year?",
+  "answer": "The seawall fight (Pike and Northgate vs. Brandt and the eelgrass findings, with the vote delayed), the Gull Point condos vs. the 1903 charter, and flooding on Front Street with a living shoreline being tested.",
+  "expect": "graph",
+  "sources": [],
+  "lesson": "The question's strongest words were \"Larkspur\" and \"Cove,\" which appear everywhere, so vector search returned four unrelated news items. GraphRAG answered from its community summaries: short overviews of each cluster, written once at index time. This \"global search\" is the thing GraphRAG can do that vector RAG can't.",
+  "rule": "Themes, summaries and \"what's going on\" questions need GraphRAG's global search.",
+  "canned": {
+   "vector": "Felix Arden began an eelgrass survey, Mara Quill was elected council chair, Sadie Brandt won the regatta, and Juno Reyes got a grant for the lighthouse. The passages don't describe any conflicts.",
+   "graph": "Three conflicts stand out. The seawall: Amos Pike and Northgate Capital back it, while Otto Brandt and the eelgrass findings stand against it, and Mara Quill has delayed the vote. Gull Point: Northgate's condos versus the 1903 charter guaranteeing public access. Flooding: Front Street floods at king tides, and a living shoreline is being tested as an alternative to the wall.",
+   "hybrid": "Three conflicts stand out. The seawall: Amos Pike and Northgate Capital back it, while Otto Brandt and the eelgrass findings stand against it, and Mara Quill has delayed the vote. Gull Point: Northgate's condos versus the 1903 charter guaranteeing public access. Flooding: Front Street floods at king tides, and a living shoreline is being tested as an alternative to the wall.",
+   "vector_ok": false,
+   "graph_ok": true,
+   "hybrid_ok": true
+  },
+  "path": []
+ },
+ {
+  "id": "q7",
+  "type": "vague",
+  "label": "Vague topic",
+  "q": "Are residents anxious about the water rising?",
+  "answer": "Yes: residents packed a forum on rising tides, basements fill at king tides, and after Storm Ada residents feared worse storms.",
+  "expect": "vector",
+  "sources": [],
+  "lesson": "GraphRAG starts by finding named things in your question. \"Residents,\" \"anxious\" and \"water\" aren't entities, so it had no way in. Vector search needs no names. (Real embeddings would also match synonyms like \"flooding\"; this demo matches words, which is enough here.)",
+  "rule": "Vague or topical questions with no names favor vector RAG.",
+  "canned": {
+   "vector": "Yes. Residents packed a forum on rising tides at The Brass Kettle, and several said their basements now fill at every king tide. After Storm Ada, residents also worried the next storm would be worse.",
+   "graph": "No entities in the question matched the graph, so there was nothing to search. I can't answer.",
+   "hybrid": "Yes. Residents packed a forum on rising tides at The Brass Kettle, and several said their basements now fill at every king tide. After Storm Ada, residents also worried the next storm would be worse.",
+   "vector_ok": true,
+   "graph_ok": false,
+   "hybrid_ok": true
+  },
+  "path": []
+ },
+ {
+  "id": "q8",
+  "type": "unanswerable",
+  "label": "Unanswerable",
+  "q": "Who won the 2025 regatta?",
+  "answer": "The archive does not say; it only reports the 2026 regatta (won by Sadie Brandt).",
+  "expect": "vector",
+  "sources": [],
+  "lesson": "The graph stored \"Sadie Brandt won Larkspur Regatta\" and dropped the year during extraction, so it answered confidently and wrongly. The raw passage kept \"2026,\" which let the vector answer notice the mismatch.",
+  "rule": "Always test with questions the corpus can't answer. Extraction loses qualifiers like dates and conditions.",
+  "canned": {
+   "vector": "The archive only reports the 2026 regatta, which Sadie Brandt won. It has no information about 2025.",
+   "graph": "Sadie Brandt won the Larkspur Regatta.",
+   "hybrid": "The archive only reports the 2026 regatta, which Sadie Brandt won. It has no information about 2025.",
+   "vector_ok": true,
+   "graph_ok": false,
+   "hybrid_ok": true
+  },
+  "path": [
+   "sadie",
+   "regatta"
+  ]
+ }
+]

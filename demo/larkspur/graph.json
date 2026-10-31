@@ -1,0 +1,754 @@
+{
+ "entities": [
+  {
+   "id": "mara",
+   "name": "Mara Quill",
+   "type": "person",
+   "c": "P",
+   "desc": "Chair of the Larkspur Harbor Council. Delayed the seawall vote.",
+   "aliases": [
+    "mara quill",
+    "mara"
+   ],
+   "docs": [
+    "d1",
+    "d10",
+    "d15"
+   ]
+  },
+  {
+   "id": "council",
+   "name": "Harbor Council",
+   "type": "org",
+   "c": "P",
+   "desc": "Town body that governs the harbor and votes on the seawall.",
+   "aliases": [
+    "harbor council",
+    "council"
+   ],
+   "docs": [
+    "d1",
+    "d2"
+   ]
+  },
+  {
+   "id": "pike",
+   "name": "Amos Pike",
+   "type": "person",
+   "c": "P",
+   "desc": "Councilor who proposed the seawall project.",
+   "aliases": [
+    "amos pike",
+    "pike"
+   ],
+   "docs": [
+    "d15",
+    "d2"
+   ]
+  },
+  {
+   "id": "seawall",
+   "name": "Seawall Project",
+   "type": "project",
+   "c": "P",
+   "desc": "Proposed flood wall along the waterfront at Gull Point.",
+   "aliases": [
+    "seawall project",
+    "seawall",
+    "wall"
+   ],
+   "docs": [
+    "d15",
+    "d2",
+    "d4",
+    "d6",
+    "d7"
+   ]
+  },
+  {
+   "id": "northgate",
+   "name": "Northgate Capital",
+   "type": "org",
+   "c": "P",
+   "desc": "Developer that wants to build condos and pledged money to the seawall.",
+   "aliases": [
+    "northgate capital",
+    "northgate"
+   ],
+   "docs": [
+    "d4"
+   ]
+  },
+  {
+   "id": "condos",
+   "name": "Gull Point Condos",
+   "type": "project",
+   "c": "P",
+   "desc": "Northgate's proposed condo development.",
+   "aliases": [
+    "gull point condos",
+    "condos",
+    "condo"
+   ],
+   "docs": [
+    "d13",
+    "d4"
+   ]
+  },
+  {
+   "id": "gullpoint",
+   "name": "Gull Point",
+   "type": "place",
+   "c": "E",
+   "desc": "Headland with eelgrass beds and historic public shore access.",
+   "aliases": [
+    "gull point"
+   ],
+   "docs": [
+    "d12",
+    "d2",
+    "d4",
+    "d5"
+   ]
+  },
+  {
+   "id": "arden",
+   "name": "Felix Arden",
+   "type": "person",
+   "c": "E",
+   "desc": "Marine biologist leading the eelgrass survey.",
+   "aliases": [
+    "felix arden",
+    "arden",
+    "felix"
+   ],
+   "docs": [
+    "d5",
+    "d6"
+   ]
+  },
+  {
+   "id": "station",
+   "name": "Cove Field Station",
+   "type": "org",
+   "c": "E",
+   "desc": "Marine research station.",
+   "aliases": [
+    "cove field station",
+    "field station"
+   ],
+   "docs": [
+    "d16",
+    "d5"
+   ]
+  },
+  {
+   "id": "eelgrass",
+   "name": "Eelgrass Beds",
+   "type": "habitat",
+   "c": "E",
+   "desc": "Seagrass meadows that shelter juvenile cod.",
+   "aliases": [
+    "eelgrass beds",
+    "eelgrass"
+   ],
+   "docs": [
+    "d5",
+    "d6"
+   ]
+  },
+  {
+   "id": "survey",
+   "name": "Eelgrass Survey",
+   "type": "project",
+   "c": "E",
+   "desc": "Summer survey. Found construction would smother most of the beds.",
+   "aliases": [
+    "eelgrass survey",
+    "survey"
+   ],
+   "docs": [
+    "d15",
+    "d5"
+   ]
+  },
+  {
+   "id": "shoreline",
+   "name": "Living Shoreline Pilot",
+   "type": "project",
+   "c": "E",
+   "desc": "Oyster reef and marsh grass test, an alternative to the seawall.",
+   "aliases": [
+    "living shoreline pilot",
+    "living shoreline"
+   ],
+   "docs": [
+    "d16",
+    "d6"
+   ]
+  },
+  {
+   "id": "ada",
+   "name": "Storm Ada",
+   "type": "event",
+   "c": "E",
+   "desc": "Spring storm that damaged the pier and flooded Front Street.",
+   "aliases": [
+    "storm ada",
+    "ada"
+   ],
+   "docs": [
+    "d3"
+   ]
+  },
+  {
+   "id": "pier",
+   "name": "North Pier",
+   "type": "place",
+   "c": "W",
+   "desc": "Town pier damaged by Storm Ada.",
+   "aliases": [
+    "north pier",
+    "pier"
+   ],
+   "docs": [
+    "d16",
+    "d3"
+   ]
+  },
+  {
+   "id": "juno",
+   "name": "Juno Reyes",
+   "type": "person",
+   "c": "H",
+   "desc": "Lighthouse keeper leading the lens restoration.",
+   "aliases": [
+    "juno reyes",
+    "juno",
+    "keeper"
+   ],
+   "docs": [
+    "d11",
+    "d13"
+   ]
+  },
+  {
+   "id": "light",
+   "name": "Larkspur Light",
+   "type": "place",
+   "c": "H",
+   "desc": "The town lighthouse.",
+   "aliases": [
+    "larkspur light",
+    "lighthouse"
+   ],
+   "docs": [
+    "d11"
+   ]
+  },
+  {
+   "id": "restoration",
+   "name": "Lighthouse Restoration",
+   "type": "project",
+   "c": "H",
+   "desc": "Lens restoration funded by a heritage grant and regatta fees.",
+   "aliases": [
+    "lighthouse restoration",
+    "restoration"
+   ],
+   "docs": [
+    "d11",
+    "d14"
+   ]
+  },
+  {
+   "id": "wen",
+   "name": "Wen Liu",
+   "type": "person",
+   "c": "H",
+   "desc": "Town librarian.",
+   "aliases": [
+    "wen liu",
+    "librarian"
+   ],
+   "docs": [
+    "d12"
+   ]
+  },
+  {
+   "id": "library",
+   "name": "Larkspur Library",
+   "type": "org",
+   "c": "H",
+   "desc": "Public library with town archives.",
+   "aliases": [
+    "larkspur library",
+    "library"
+   ],
+   "docs": [
+    "d12"
+   ]
+  },
+  {
+   "id": "charter",
+   "name": "1903 Harbor Charter",
+   "type": "document",
+   "c": "H",
+   "desc": "Historic charter guaranteeing public shore access.",
+   "aliases": [
+    "1903 harbor charter",
+    "charter",
+    "1903"
+   ],
+   "docs": [
+    "d12",
+    "d13"
+   ]
+  },
+  {
+   "id": "ines",
+   "name": "Ines Quill",
+   "type": "person",
+   "c": "W",
+   "desc": "Cafe owner and market organizer.",
+   "aliases": [
+    "ines quill",
+    "ines"
+   ],
+   "docs": [
+    "d10",
+    "d9"
+   ]
+  },
+  {
+   "id": "kettle",
+   "name": "The Brass Kettle",
+   "type": "business",
+   "c": "W",
+   "desc": "Cafe on Front Street.",
+   "aliases": [
+    "the brass kettle",
+    "brass kettle",
+    "kettle",
+    "cafe"
+   ],
+   "docs": [
+    "d9"
+   ]
+  },
+  {
+   "id": "market",
+   "name": "Harvest Market",
+   "type": "event",
+   "c": "W",
+   "desc": "Weekly farmers market.",
+   "aliases": [
+    "harvest market",
+    "market"
+   ],
+   "docs": [
+    "d10"
+   ]
+  },
+  {
+   "id": "otto",
+   "name": "Otto Brandt",
+   "type": "person",
+   "c": "W",
+   "desc": "Owner of Brandt Boatworks. Opposes the seawall.",
+   "aliases": [
+    "otto brandt",
+    "otto"
+   ],
+   "docs": [
+    "d14",
+    "d7"
+   ]
+  },
+  {
+   "id": "boatworks",
+   "name": "Brandt Boatworks",
+   "type": "business",
+   "c": "W",
+   "desc": "Boatyard that builds and maintains the town ferry.",
+   "aliases": [
+    "brandt boatworks",
+    "boatworks",
+    "boatyard"
+   ],
+   "docs": [
+    "d16",
+    "d7"
+   ]
+  },
+  {
+   "id": "sadie",
+   "name": "Sadie Brandt",
+   "type": "person",
+   "c": "W",
+   "desc": "Ferry captain and regatta winner.",
+   "aliases": [
+    "sadie brandt",
+    "sadie"
+   ],
+   "docs": [
+    "d14",
+    "d8"
+   ]
+  },
+  {
+   "id": "ferry",
+   "name": "Saltmarsh Ferry",
+   "type": "service",
+   "c": "W",
+   "desc": "Seasonal town ferry.",
+   "aliases": [
+    "saltmarsh ferry",
+    "ferry"
+   ],
+   "docs": [
+    "d7",
+    "d8"
+   ]
+  },
+  {
+   "id": "regatta",
+   "name": "Larkspur Regatta",
+   "type": "event",
+   "c": "W",
+   "desc": "Annual sailing race.",
+   "aliases": [
+    "larkspur regatta",
+    "regatta"
+   ],
+   "docs": [
+    "d14"
+   ]
+  },
+  {
+   "id": "frontst",
+   "name": "Front Street",
+   "type": "place",
+   "c": "W",
+   "desc": "Waterfront street that floods at king tides.",
+   "aliases": [
+    "front street"
+   ],
+   "docs": [
+    "d3",
+    "d9"
+   ]
+  }
+ ],
+ "relations": [
+  {
+   "s": "mara",
+   "rel": "chairs",
+   "t": "council",
+   "doc": "d1"
+  },
+  {
+   "s": "pike",
+   "rel": "sits on",
+   "t": "council",
+   "doc": "d2"
+  },
+  {
+   "s": "pike",
+   "rel": "proposed",
+   "t": "seawall",
+   "doc": "d2"
+  },
+  {
+   "s": "seawall",
+   "rel": "would be built at",
+   "t": "gullpoint",
+   "doc": "d2"
+  },
+  {
+   "s": "northgate",
+   "rel": "funds",
+   "t": "seawall",
+   "doc": "d4"
+  },
+  {
+   "s": "northgate",
+   "rel": "plans",
+   "t": "condos",
+   "doc": "d4"
+  },
+  {
+   "s": "condos",
+   "rel": "would be built at",
+   "t": "gullpoint",
+   "doc": "d4"
+  },
+  {
+   "s": "arden",
+   "rel": "works at",
+   "t": "station",
+   "doc": "d5"
+  },
+  {
+   "s": "arden",
+   "rel": "leads",
+   "t": "survey",
+   "doc": "d5"
+  },
+  {
+   "s": "arden",
+   "rel": "studies",
+   "t": "eelgrass",
+   "doc": "d5"
+  },
+  {
+   "s": "survey",
+   "rel": "measures",
+   "t": "eelgrass",
+   "doc": "d5"
+  },
+  {
+   "s": "eelgrass",
+   "rel": "grows at",
+   "t": "gullpoint",
+   "doc": "d5"
+  },
+  {
+   "s": "seawall",
+   "rel": "would smother",
+   "t": "eelgrass",
+   "doc": "d6"
+  },
+  {
+   "s": "arden",
+   "rel": "recommends",
+   "t": "shoreline",
+   "doc": "d6"
+  },
+  {
+   "s": "otto",
+   "rel": "owns",
+   "t": "boatworks",
+   "doc": "d7"
+  },
+  {
+   "s": "otto",
+   "rel": "opposes",
+   "t": "seawall",
+   "doc": "d7"
+  },
+  {
+   "s": "boatworks",
+   "rel": "maintains",
+   "t": "ferry",
+   "doc": "d7"
+  },
+  {
+   "s": "sadie",
+   "rel": "captains",
+   "t": "ferry",
+   "doc": "d8"
+  },
+  {
+   "s": "sadie",
+   "rel": "is daughter of",
+   "t": "otto",
+   "doc": "d14"
+  },
+  {
+   "s": "ines",
+   "rel": "owns",
+   "t": "kettle",
+   "doc": "d9"
+  },
+  {
+   "s": "kettle",
+   "rel": "is on",
+   "t": "frontst",
+   "doc": "d9"
+  },
+  {
+   "s": "ines",
+   "rel": "is sister of",
+   "t": "mara",
+   "doc": "d10"
+  },
+  {
+   "s": "ines",
+   "rel": "organizes",
+   "t": "market",
+   "doc": "d10"
+  },
+  {
+   "s": "juno",
+   "rel": "keeps",
+   "t": "light",
+   "doc": "d11"
+  },
+  {
+   "s": "juno",
+   "rel": "leads",
+   "t": "restoration",
+   "doc": "d11"
+  },
+  {
+   "s": "restoration",
+   "rel": "restores",
+   "t": "light",
+   "doc": "d11"
+  },
+  {
+   "s": "wen",
+   "rel": "works at",
+   "t": "library",
+   "doc": "d12"
+  },
+  {
+   "s": "wen",
+   "rel": "discovered",
+   "t": "charter",
+   "doc": "d12"
+  },
+  {
+   "s": "charter",
+   "rel": "guarantees access at",
+   "t": "gullpoint",
+   "doc": "d12"
+  },
+  {
+   "s": "charter",
+   "rel": "could block",
+   "t": "condos",
+   "doc": "d13"
+  },
+  {
+   "s": "juno",
+   "rel": "champions",
+   "t": "charter",
+   "doc": "d13"
+  },
+  {
+   "s": "sadie",
+   "rel": "won",
+   "t": "regatta",
+   "doc": "d14"
+  },
+  {
+   "s": "regatta",
+   "rel": "funds",
+   "t": "restoration",
+   "doc": "d14"
+  },
+  {
+   "s": "mara",
+   "rel": "postponed vote on",
+   "t": "seawall",
+   "doc": "d15"
+  },
+  {
+   "s": "mara",
+   "rel": "is waiting on",
+   "t": "survey",
+   "doc": "d15"
+  },
+  {
+   "s": "pike",
+   "rel": "opposes delay by",
+   "t": "mara",
+   "doc": "d15"
+  },
+  {
+   "s": "station",
+   "rel": "builds",
+   "t": "shoreline",
+   "doc": "d16"
+  },
+  {
+   "s": "boatworks",
+   "rel": "builds",
+   "t": "shoreline",
+   "doc": "d16"
+  },
+  {
+   "s": "shoreline",
+   "rel": "is tested at",
+   "t": "pier",
+   "doc": "d16"
+  },
+  {
+   "s": "ada",
+   "rel": "damaged",
+   "t": "pier",
+   "doc": "d3"
+  },
+  {
+   "s": "ada",
+   "rel": "flooded",
+   "t": "frontst",
+   "doc": "d3"
+  }
+ ],
+ "communities": [
+  {
+   "id": "P",
+   "title": "Harbor politics",
+   "summary": "Councilor Amos Pike's $14M seawall at Gull Point is partly funded by Northgate Capital, which wants to build condos on the same land. Chair Mara Quill has delayed the vote until the eelgrass report arrives.",
+   "color": "#ff8a5c",
+   "members": [
+    "mara",
+    "council",
+    "pike",
+    "seawall",
+    "northgate",
+    "condos"
+   ]
+  },
+  {
+   "id": "E",
+   "title": "Coast & ecology",
+   "summary": "Felix Arden's survey finds the seawall would smother most of the Gull Point eelgrass. He backs a living shoreline, now being tested at the storm-damaged north pier.",
+   "color": "#5ce1c6",
+   "members": [
+    "gullpoint",
+    "arden",
+    "station",
+    "eelgrass",
+    "survey",
+    "shoreline",
+    "ada"
+   ]
+  },
+  {
+   "id": "H",
+   "title": "Lighthouse & heritage",
+   "summary": "Juno Reyes is restoring the Larkspur Light. Librarian Wen Liu found a 1903 charter guaranteeing public shore access at Gull Point, which may block the condos.",
+   "color": "#b49cff",
+   "members": [
+    "juno",
+    "light",
+    "restoration",
+    "wen",
+    "library",
+    "charter"
+   ]
+  },
+  {
+   "id": "W",
+   "title": "Waterfront life",
+   "summary": "Ines Quill's cafe and the Harvest Market anchor Front Street, which now floods at king tides. Otto Brandt's boatyard maintains the ferry his daughter Sadie captains, and he opposes the seawall.",
+   "color": "#ffd166",
+   "members": [
+    "pier",
+    "ines",
+    "kettle",
+    "market",
+    "otto",
+    "boatworks",
+    "sadie",
+    "ferry",
+    "regatta",
+    "frontst"
+   ]
+  }
+ ]
+}
