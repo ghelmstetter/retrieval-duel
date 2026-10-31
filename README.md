@@ -47,11 +47,15 @@ python -m rduel
 
 Upload `.txt`, `.md`, `.pdf`, `.json` or `.jsonl` files. For JSON/JSONL, each record needs a `text` field (or `body`/`content`), and optionally `title` and `date`.
 
-Datasets worth trying because they show the differences well:
+### Built-in public datasets
 
-- **MultiHop-RAG**: news articles from late 2023 with multi-hop questions. Export a sample of ~100 articles to JSONL.
-- **GraphRAG-Bench**: novels and a medical corpus from a 2025 study of when graphs help RAG.
-- **Enron emails**: who wrote to whom about what, naturally graph-shaped. Use a few hundred messages.
+The Load page has one-click imports that download a small sample from Hugging Face on your computer:
+
+- **MultiHop-RAG** (yixuantt/MultiHopRAG, ODC-By): news articles from late 2023. The sample is built around some of the dataset's own multi-hop, comparison, temporal and unanswerable questions, so you also get **benchmark questions with official reference answers**, plus distractor articles.
+- **GraphRAG-Bench (novel)**: one novel from the 2025 study, split into sections, with the study's own questions whose evidence falls inside the sample.
+- **Enron emails**: a run of consecutive emails from the public Enron corpus, with sender, recipients and subject kept and quoted replies trimmed.
+
+Choose small, medium or large. Nothing is sent to Claude until you click Index, and the cost estimate shows first. Some Hugging Face datasets require accepting terms; if an import reports a 401/403 error, accept them on huggingface.co and add `HF_TOKEN=...` to `.env`.
 
 ## How it works
 
@@ -79,13 +83,15 @@ rduel/            Python package
   graph_index.py  extraction, entity merging, communities, local/global search
   questions.py    test-question generator
   qa.py           router, answer prompt, auto-judge
+  catalog.py      one-click importers for public datasets
   pipeline.py     datasets, indexing job, asking all three
   server.py       web API (Starlette)
 web/              the page (HTML, CSS, JS with D3 for the visuals)
 demo/larkspur/    the demo dataset with its prebuilt graph
 run.bat           one-click setup and start for Windows
+tests/            offline tests (python -m tests.test_catalog)
 ```
 
 ## Ideas for later
 
-Loaders for the Hugging Face datasets above, a reranker, keyword (BM25) search as a fourth contestant, agentic retrieval, and side-by-side runs of Microsoft GraphRAG or LightRAG on the same corpus.
+A reranker, keyword (BM25) search as a fourth contestant, agentic retrieval, and side-by-side runs of Microsoft GraphRAG or LightRAG on the same corpus.

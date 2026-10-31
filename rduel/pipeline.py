@@ -134,6 +134,64 @@ def create_dataset(name, description, files, chunk_words=120):
     return ds.summary()
 
 
+def catalog_list():
+    from . import catalog
+    imported = {}
+    for p in config.DATASETS_DIR.iterdir():
+        m = _read(p / "meta.json", {})
+        if m.get("catalog"):
+            imported[m["catalog"]] = p.name
+    return [{**c, "imported": imported.get(c["id"])} for c in catalog.CATALOG]
+
+
+def start_import(cat_id, size_id):
+    from . import catalog
+    if cat_id not in catalog.BY_ID:
+        raise ValueError("Unknown dataset.")
+    job_id = uuid.uuid4().hex[:10]
+    job = {"id": job_id, "kind": "import", "dataset": None, "status": "running", "stage": "download", "done": 0, "total": 1,
+           "message": "Contacting Hugging Face…", "entities": 0, "relations": 0, "communities": 0, "meter": {}, "error": None, "events": []}
+    JOBS[job_id] = job
+
+    def progress(stage, done, total, message=""):
+        with _LOCK:
+            job.update(stage=stage, done=done, total=total)
+            if message:
+                job["message"] = message
+
+    def run():
+        try:
+            entry, size, docs, bench = catalog.run_import(cat_id, size_id, progress)
+            for i, d in enumerate(docs):
+                d["id"] = f"d{i + 1}"
+            slug = cat_id
+            n = 2
+            while (config.DATASETS_DIR / slug).exists():
+                slug, n = f"{cat_id}-{n}", n + 1
+            folder = config.DATASETS_DIR / slug
+            folder.mkdir(parents=True)
+            _write(folder / "docs.json", docs)
+            _write(folder / "benchmark.json", bench)
+            ds = Dataset(slug)
+            desc = f"{entry['description']} Sample: {size['label'].split(':')[-1].strip()}"
+            if bench:
+                desc += f", with {len(bench)} of the dataset's own questions."
+            ds.meta = {"name": entry["name"], "description": desc, "created": time.time(), "status": "new",
+                       "chunk_words": 150 if cat_id == "graphrag-bench" else 120, "linking": "names+embeddings",
+                       "demo": False, "doc_count": len(docs), "catalog": cat_id, "size": size["id"], "source": entry["source"],
+                       "license": entry["license"]}
+            ds.save_meta()
+            with _LOCK:
+                job.update(status="done", stage="done", dataset=slug, message=f"Imported {len(docs)} documents.")
+        except Exception as e:
+            traceback.print_exc()
+            with _LOCK:
+                job.update(status="error", error=str(e))
+
+    threading.Thread(target=run, daemon=True).start()
+    return job
+
+
 def delete_dataset(slug):
     ds = Dataset(slug)
     if ds.meta.get("demo"):
@@ -257,7 +315,8 @@ def _run_index(ds, job):
         ds._v = ds._g = None
         qs = questions.generate(docs, chunks, graph, ds.vindex(), meter,
                                 lambda s, d, t, m="": progress("questions", d, t, "Writing test questions: " + m))
-        _write(ds.folder / "questions.json", qs)
+        bench = questions.benchmark_entries(_read(ds.folder / "benchmark.json", []))
+        _write(ds.folder / "questions.json", bench + qs)
 
         ds.meta.update(status="ready", indexed=time.time(), stats=_stats(ds), index_cost=meter.as_dict())
         ds.save_meta()

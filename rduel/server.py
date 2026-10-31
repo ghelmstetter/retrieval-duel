@@ -66,6 +66,15 @@ async def datasets(request):
 
 
 @guarded
+async def catalog(request):
+    if request.method == "POST":
+        b = await request.json()
+        job = pipeline.start_import(b.get("id"), b.get("size"))
+        return ok({k: v for k, v in job.items() if k != "events"})
+    return ok(await run_in_threadpool(pipeline.catalog_list))
+
+
+@guarded
 async def dataset(request):
     ds = _ds(request)
     if request.method == "DELETE":
@@ -165,6 +174,7 @@ routes = [
     Route("/", index),
     Route("/api/status", status),
     Route("/api/datasets", datasets, methods=["GET", "POST"]),
+    Route("/api/catalog", catalog, methods=["GET", "POST"]),
     Route("/api/datasets/{slug}", dataset, methods=["GET", "DELETE"]),
     Route("/api/datasets/{slug}/estimate", estimate),
     Route("/api/datasets/{slug}/index", start_index, methods=["POST"]),

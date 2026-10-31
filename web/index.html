@@ -246,6 +246,10 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
 .ds:hover{border-color:var(--line2)}
 .ds.add{border-style:dashed;align-items:flex-start;justify-content:center}
 .ds.add h3{color:var(--query)}
+.ds.cat{border-style:dashed}
+.upload p{margin:0}
+.upload .ufields select{max-width:360px}
+.ds.cat .tag{color:var(--graph)}
 .ds .del{position:absolute;top:8px;right:8px;background:none;border:0;color:var(--faint);font-size:12px;padding:4px 6px;border-radius:6px}
 .ds .del:hover{color:var(--bad);background:var(--deck2)}
 .ds .st{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
@@ -323,7 +327,7 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
 <section class="step" id="step-load" hidden>
   <div class="eyebrow">Step 2 · Load a dataset</div>
   <h2>Prepare the documents for searching</h2>
-  <p class="lede">Before either system can answer anything, it has to prepare the documents. This is called <b>indexing</b>, and it happens once, ahead of time. Start with the Larkspur Gazette, or add your own documents.</p>
+  <p class="lede">Before either system can answer anything, it has to prepare the documents. This is called <b>indexing</b>, and it happens once, ahead of time. Start with the Larkspur Gazette, import a public benchmark dataset, or add your own documents.</p>
   <div class="datasets" id="datasets"></div>
   <form class="upload" id="uploadBox" hidden>
     <h3>Add your own documents</h3>
@@ -338,8 +342,17 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
       <span id="upList"></span>
     </label>
     <p class="cta-note">Your files are stored on this computer. When you index them, their text is sent to Claude to build the knowledge graph.</p>
-    <div class="row"><button class="btn" type="submit" id="upGo">Add dataset</button><button class="btn ghost" type="button" id="upCancel">Cancel</button><span class="cta-note" id="upMsg"></span></div>
+    <div class="row"><button class="btn big" type="submit" id="upGo">Add dataset</button><button class="btn ghost" type="button" id="upCancel">Cancel</button><span class="cta-note" id="upMsg"></span></div>
   </form>
+  <div class="upload" id="importBox" hidden>
+    <span class="eyebrow" id="impSource"></span>
+    <h3 id="impName"></h3>
+    <p class="cta-note" id="impDesc" style="color:#cfd8e8"></p>
+    <p class="cta-note" id="impWhy"></p>
+    <div class="ufields"><label>Sample size<select id="impSize"></select></label><span></span></div>
+    <p class="cta-note">The sample downloads from Hugging Face to this computer (a few MB). Nothing is sent to Claude until you index it.</p>
+    <div class="row"><button class="btn big" type="button" id="impGo">Download sample</button><button class="btn ghost" type="button" id="impCancel">Cancel</button><span class="cta-note" id="impMsg"></span></div>
+  </div>
   <div class="cta" id="cta">
     <div class="cta-how">
       <div><span class="eyebrow" style="color:var(--vec)">Vector side · quick and cheap</span><p id="howVec">Cut the articles into short passages and give each one coordinates on the map of meaning.</p></div>

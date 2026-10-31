@@ -8,7 +8,7 @@ const WIN_LABEL={vector:'Vector',graph:'Graph',tie:'Tie',neither:'Both wrong'};
 const ROUTE_LABEL={vector:'vector search only',graph:'the graph only',both:'both, merged'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const state={status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
+const state={catalog:[],status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
 
 async function api(path,opts={}){
   const res=await fetch(path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});
@@ -39,19 +39,22 @@ document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{go(b.dataset.
 window.addEventListener('hashchange',()=>go(location.hash.slice(1)));
 
 // ================= datasets & load step =================
-async function refreshDatasets(){ state.datasets=await api('/api/datasets'); renderDatasets(); }
+async function refreshDatasets(){ state.datasets=await api('/api/datasets'); try{ state.catalog=await api('/api/catalog'); }catch(e){ state.catalog=[]; } renderDatasets(); }
 function renderDatasets(){
   const cards=state.datasets.map(d=>{
     const st=d.demo?'demo · prebuilt':(d.status==='ready'?`indexed · ${d.stats?d.stats.entities+' entities':''}`:d.status==='indexing'?'indexing…':d.status==='error'?'indexing failed':'not indexed yet');
     return `<div class="ds${d.slug===state.ds?' on':''}" role="button" tabindex="0" data-slug="${d.slug}">
-      <span class="tag">${d.slug===state.ds?'Selected':(d.demo?'Demo':'Your data')}</span><h3>${esc(d.name)}</h3><p>${esc(d.description||'')}</p>
+      <span class="tag">${d.slug===state.ds?'Selected':(d.demo?'Demo':(d.catalog?'Public dataset':'Your data'))}</span><h3>${esc(d.name)}</h3><p>${esc(d.description||'')}</p>
       <span class="st ${d.status}">${st}</span>${d.demo?'':`<button class="del" data-del="${d.slug}" title="Delete this dataset">Delete</button>`}</div>`;}).join('');
-  $('#datasets').innerHTML=cards+`<button class="ds add" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
+  const catCards=state.catalog.filter(c=>!c.imported).map(c=>`<div class="ds cat" role="button" tabindex="0" data-cat="${c.id}">
+      <span class="tag">Public dataset · import</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="st">${esc(c.source)}</span></div>`).join('');
+  $('#datasets').innerHTML=cards+catCards+`<button class="ds add" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
   document.querySelectorAll('.ds[data-slug]').forEach(c=>{ const pick=()=>selectDataset(c.dataset.slug); c.onclick=e=>{ if(!e.target.dataset.del) pick(); }; c.onkeydown=e=>{ if(e.key==='Enter') pick(); }; });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{ e.stopPropagation();
     if(b.dataset.confirm!=='1'){ b.dataset.confirm='1'; b.textContent='Really delete?'; return; }
     try{ await api('/api/datasets/'+b.dataset.del,{method:'DELETE'}); if(state.ds===b.dataset.del){ state.ds=null; state.data=null; } await refreshDatasets(); if(!state.ds && state.datasets[0]) selectDataset(state.datasets[0].slug); }catch(err){ alertBox(err.message); } });
-  $('#addDs').onclick=()=>{ $('#uploadBox').hidden=false; $('#upName').focus(); };
+  $('#addDs').onclick=()=>{ $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
+  document.querySelectorAll('.ds[data-cat]').forEach(c=>{ const open=()=>openImport(c.dataset.cat); c.onclick=open; c.onkeydown=e=>{ if(e.key==='Enter') open(); }; });
 }
 function alertBox(msg){ showError('#estimate',msg); }
 
@@ -137,6 +140,32 @@ async function pollJob(id){
     await new Promise(r=>setTimeout(r,700));
   }
 }
+
+// ---------- import a public dataset ----------
+let impId=null;
+function openImport(id){
+  const c=state.catalog.find(x=>x.id===id); if(!c) return; impId=id;
+  $('#uploadBox').hidden=true; $('#importBox').hidden=false;
+  $('#impSource').textContent=c.source+' · license: '+c.license; $('#impName').textContent=c.name;
+  $('#impDesc').textContent=c.description; $('#impWhy').textContent=c.why;
+  $('#impSize').innerHTML=c.sizes.map(s=>`<option value="${s.id}"${s.id===c.default?' selected':''}>${esc(s.label)}</option>`).join('');
+  $('#impMsg').textContent=''; $('#impGo').disabled=false;
+  $('#importBox').scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'nearest'});
+}
+$('#impCancel').onclick=()=>{ $('#importBox').hidden=true; };
+$('#impGo').onclick=async ()=>{
+  $('#impGo').disabled=true; $('#impMsg').textContent='Starting download…';
+  try{
+    const job=await api('/api/catalog',{method:'POST',body:{id:impId,size:$('#impSize').value}});
+    while(true){
+      await new Promise(r=>setTimeout(r,800));
+      const j=await api('/api/jobs/'+job.id);
+      $('#impMsg').textContent=j.message+(j.stage==='download'&&j.total>1?` ${j.done}/${j.total}`:'');
+      if(j.status==='done'){ $('#importBox').hidden=true; await refreshDatasets(); await selectDataset(j.dataset); return; }
+      if(j.status==='error'){ $('#impMsg').textContent=''; showError('#impMsg',j.error); $('#impGo').disabled=false; return; }
+    }
+  }catch(e){ $('#impMsg').textContent=e.message; $('#impGo').disabled=false; }
+};
 
 // ---------- upload ----------
 const upFiles=[];

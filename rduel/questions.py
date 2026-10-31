@@ -32,6 +32,9 @@ TYPE_INFO = {
     "vague": {"label": "Vague topic", "expect": "vector", "tests": "Does it work when the question names nobody?",
         "rule": "Vague or topical questions with no names favor vector RAG.",
         "lesson": "GraphRAG starts from named things in the question. With no names to latch onto it has little to work with, while vector search matches on wording and meaning."},
+    "temporal": {"label": "Temporal", "expect": "tie", "tests": "Can it reason about when things were reported?",
+        "rule": "Questions about dates and sources need metadata filters, which neither basic method has.",
+        "lesson": "This question hinges on publication dates or which outlet said what. Neither plain vector search nor a basic graph handles that well; production systems add date and source filters on top of retrieval."},
     "unanswerable": {"label": "Unanswerable", "expect": "tie", "tests": "Does it admit what it doesn't know?",
         "rule": "Always test with questions the corpus can't answer.",
         "lesson": "The documents don't contain this answer. The right response is to say so. Watch for a confident answer built from nearby facts; graph extraction often drops the qualifiers (years, conditions) that would reveal the mismatch."},
@@ -193,4 +196,15 @@ def generate(docs, chunks, graph, vindex, meter, progress=lambda *a: None, seed=
         if r:
             add("unanswerable", *r, [])
     tick("unanswerable")
+    return out
+
+
+def benchmark_entries(bench, start=1):
+    """Turn a dataset's own benchmark questions into question cards."""
+    out = []
+    for k, b in enumerate(bench):
+        info = TYPE_INFO.get(b["type"], TYPE_INFO["multi_hop"])
+        out.append({"id": f"b{start + k}", "type": b["type"], "label": info["label"] + " · benchmark", "q": b["q"],
+                    "answer": b["answer"], "expect": info["expect"], "sources": [], "benchmark": True,
+                    "note": "This question and its reference answer come from the dataset's authors."})
     return out
