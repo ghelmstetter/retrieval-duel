@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
-from . import config, graph_index, llm, qa, questions, vector_index
+from . import agent, config, graph_index, llm, qa, questions, vector_index
 from .embed import load_embedder
 from .textutil import approx_tokens, chunk_document
 
@@ -427,11 +427,15 @@ def ask(slug, question, sample_id=None):
               "vector": {**v, "latency": None}, "graph": {**g, "latency": None},
               "hybrid": {"route": rt["route"], "context_tokens": hy_tokens, "latency": None}}
 
+    top_k = ds.meta.get("top_k")
     if live:
+        agent_meter = llm.Meter()
         jobs = {
             "vector": lambda: qa.answer(question, "passages found by vector search", v["context"], meter),
             "graph": lambda: qa.answer(question, "community summaries" if g["mode"] == "global" else "facts from a knowledge graph", g["context"], meter),
             "hybrid": lambda: qa.answer(question, "merged search results", merged, meter),
+            "agent": lambda: agent.run(question, ds.vindex(), gi, planner=agent.ClaudePlanner(gi, agent_meter),
+                                       top_k=top_k, meter=agent_meter),
         }
         times = {}
 
@@ -441,30 +445,44 @@ def ask(slug, question, sample_id=None):
             times[name] = time.time() - s
             return name, out
 
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        with ThreadPoolExecutor(max_workers=4) as ex:
             for name, out in ex.map(run, list(jobs)):
-                result[name]["answer"] = out
+                if name == "agent":
+                    result["agent"] = out
+                else:
+                    result[name]["answer"] = out
+        for k in ("calls", "cached", "tokens_in", "tokens_out", "dollars"):  # count the agent's spending too
+            setattr(meter, k, getattr(meter, k) + getattr(agent_meter, k))
         result["vector"]["latency"] = round(t_vec + times["vector"], 2)
         result["graph"]["latency"] = round(t_graph + times["graph"], 2)
         result["hybrid"]["latency"] = round(max(t_vec, t_graph) + times["hybrid"], 2)
         if sample and sample.get("answer"):
-            with ThreadPoolExecutor(max_workers=3) as ex:
-                grades = list(ex.map(lambda n: qa.judge(question, sample["answer"], result[n]["answer"], meter), ["vector", "graph", "hybrid"]))
-            for n, gr in zip(["vector", "graph", "hybrid"], grades):
+            names = ["vector", "graph", "hybrid", "agent"]
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                grades = list(ex.map(lambda n: qa.judge(question, sample["answer"], result[n]["answer"], meter), names))
+            for n, gr in zip(names, grades):
                 result[n]["grade"] = gr
-    elif sample and sample.get("canned"):
-        c = sample["canned"]
-        for n in ("vector", "graph", "hybrid"):
-            result[n]["answer"] = c[n]
-            result[n]["grade"] = {"grade": "correct" if c[n + "_ok"] else "wrong", "why": "Pre-graded for the demo."}
-        result["canned"] = True
     else:
-        for n in ("vector", "graph", "hybrid"):
-            result[n]["answer"] = None
+        # No key: the agent's decisions come from a pre-written plan (demo questions) or simple rules;
+        # its searches still run for real.
+        script = sample.get("agent_script") if sample else None
+        planner = agent.ScriptedPlanner(script) if script else agent.RulesPlanner(gi)
+        result["agent"] = agent.run(question, ds.vindex(), gi, planner=planner, top_k=top_k, answer=False)
+        if sample and sample.get("canned"):
+            c = sample["canned"]
+            for n in ("vector", "graph", "hybrid", "agent"):
+                if n in c:
+                    result[n]["answer"] = c[n]
+                    result[n]["grade"] = {"grade": "correct" if c.get(n + "_ok") else "wrong", "why": "Pre-graded for the demo."}
+            result["canned"] = True
+        for n in ("vector", "graph", "hybrid", "agent"):
+            result[n].setdefault("answer", None)
     if not live:  # typical values so the meters still show something
         result["vector"]["latency"] = round(0.4 + v["context_tokens"] / 2000, 1)
         result["graph"]["latency"] = round(3.2 if g["mode"] == "global" else (0.9 + g["context_tokens"] / 900 if g.get("seeds") else 0.3), 1)
         result["hybrid"]["latency"] = round(0.3 + max(result["vector"]["latency"], result["graph"]["latency"]), 1)
+        llm_steps = sum(1 for s in result["agent"]["steps"] if s["kind"] in ("plan", "check")) + 1
+        result["agent"]["latency"] = round(0.9 * llm_steps + 0.4 * result["agent"]["searches"] + result["agent"]["context_tokens"] / 2000, 1)
         result["estimated_latency"] = True
     result["meter"] = meter.as_dict()
     return result

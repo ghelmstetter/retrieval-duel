@@ -32,6 +32,13 @@ def fake_complete(task, system, user):
         if "main" in q or "theme" in q:
             return json.dumps({"type": "big_picture", "route": "graph", "reason": "Big-picture question."})
         return json.dumps({"type": "other", "route": "both", "reason": "Unsure, so both."})
+    if task == "agent_plan":
+        q = user.split("Question:", 1)[-1].split("\n", 1)[0].strip()
+        return json.dumps({"rewritten": q + " (rewritten)", "why": "Stand-in plan.", "actions": [{"tool": "vector", "query": q + " council chair"}]})
+    if task == "agent_check":
+        if "read the topic summaries" in user:
+            return json.dumps({"enough": True, "note": "Stand-in: enough now.", "next": None})
+        return json.dumps({"enough": False, "note": "Stand-in: not enough yet.", "next": {"tool": "summaries"}})
     if task == "answer":
         ev = user.split("):", 1)[-1].strip().splitlines()
         ev = [l for l in ev if l.strip() and not l.endswith(":")]

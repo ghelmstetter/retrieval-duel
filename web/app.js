@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 const REDUCED=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const D=()=>REDUCED?0:1;
 const W=600,H=430;
-const WIN_LABEL={vector:'Vector',graph:'Graph',tie:'Tie',neither:'Both wrong'};
+const WIN_LABEL={vector:'Vector',graph:'Graph',hybrid:'Hybrid',agentic:'Agentic',tie:'Tie',neither:'All wrong'};
 const ROUTE_LABEL={vector:'vector search only',graph:'the graph only',both:'both, merged'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -380,15 +380,16 @@ async function ask(item){
   const t=state.types[item.type]||{};
   $('#predict').innerHTML=item.custom?'':`Testing: <b>${esc(t.tests||'')}</b> Make your guess, then watch.`;
   $('#duelResults').hidden=false; $('#lesson').hidden=true;
-  ['#vecVerdict','#grVerdict','#hyVerdict'].forEach(s=>$(s).hidden=true);
-  ['#vecText','#grText','#hyText'].forEach(s=>$(s).innerHTML='<span style="color:var(--faint)">Searching…</span>');
+  ['#vecVerdict','#grVerdict','#hyVerdict','#agVerdict'].forEach(s=>$(s).hidden=true);
+  $('#agSteps').innerHTML='';
+  ['#vecText','#grText','#hyText','#agText'].forEach(s=>$(s).innerHTML='<span style="color:var(--faint)">Searching…</span>');
   ['#vecEv','#grEv'].forEach(s=>$(s).innerHTML=''); $('#hyNote').textContent='';
   $('#router').hidden=false; $('#routeWhy').textContent='Deciding…'; document.querySelectorAll('#router .route').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('#votes button').forEach(b=>b.setAttribute('aria-pressed',state.votes[item.id||item.q]&&state.votes[item.id||item.q].vote===b.dataset.v));
   const run=++state.run;
   if(!REDUCED) $('#stage').scrollIntoView({behavior:'smooth',block:'start'});
   let r; try{ r=await api(`/api/datasets/${state.ds}/ask`,{method:'POST',body:{question:item.q,sample_id:item.custom?null:item.id}}); }
-  catch(e){ if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=''; showError('#lesson',e.message); } return; }
+  catch(e){ if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message); } return; }
   if(run!==state.run) return;
   state.last=r;
   document.querySelector('#router .route.'+r.route.route).classList.add('on');
@@ -468,11 +469,11 @@ const tokensOf=w=>{ const m=String(w).toLowerCase().match(/[a-z0-9$]+/); if(!m) 
 const markShared=(text,shared)=>esc(text).replace(/[A-Za-z0-9$]+/g,w=>shared.includes(tokensOf(w))?`<mark>${w}</mark>`:w);
 
 function fillAnswers(item,r,run){
-  const d=D(), v=r.vector, g=r.graph, hy=r.hybrid;
-  const maxTok=Math.max(v.context_tokens,g.context_tokens,hy.context_tokens,1), maxLat=Math.max(v.latency,g.latency,hy.latency,.1);
+  const d=D(), v=r.vector, g=r.graph, hy=r.hybrid, ag=r.agent;
+  const maxTok=Math.max(v.context_tokens,g.context_tokens,hy.context_tokens,ag.context_tokens,1), maxLat=Math.max(v.latency,g.latency,hy.latency,ag.latency,.1);
   const lat=x=>(r.estimated_latency?'~':'')+x.toFixed(1)+' s';
   setTimeout(()=>{ if(run!==state.run) return;
-    [['vec',v],['gr',g],['hy',hy]].forEach(([p,x])=>{ $('#'+p+'Bar').style.width=(100*x.context_tokens/maxTok)+'%'; $('#'+p+'Tok').textContent=x.context_tokens+' tok';
+    [['vec',v],['gr',g],['hy',hy],['ag',ag]].forEach(([p,x])=>{ $('#'+p+'Bar').style.width=(100*x.context_tokens/maxTok)+'%'; $('#'+p+'Tok').textContent=x.context_tokens+' tok';
       $('#'+p+'LatBar').style.width=(100*x.latency/maxLat)+'%'; $('#'+p+'Lat').textContent=lat(x.latency); }); },600*d);
   $('#vecEv').innerHTML=v.hits.length?v.hits.map((h,i)=>`<li><span class="s">#${i+1} ${h.score.toFixed(2)}</span>${markShared(h.text.length>500?h.text.slice(0,500)+'…':h.text,h.shared)}<span class="src">${esc(h.date?h.date+' · ':'')}${esc(h.title)}</span></li>`).join(''):'<li>No passage scored above zero.</li>';
   const docTitle=Object.fromEntries(state.data.docs.map(x=>[x.id,x.title]));
@@ -488,6 +489,9 @@ function fillAnswers(item,r,run){
   typeText($('#vecText'),v.answer||noAns('vector'),run,1300*gd);
   typeText($('#grText'),g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd);
   typeText($('#hyText'),hy.answer||noAns('hybrid'),run,2100*gd);
+  renderAgentSteps(ag,r,run);
+  const agNo=ag.planner==='rules'?'Without an API key the agent follows simple rules instead of thinking, and can\'t write an answer. Its searches are shown below.':'With an API key, Claude would write this answer from everything the agent gathered.';
+  typeText($('#agText'),ag.answer||agNo,run,(2400+ag.steps.length*450)*gd);
   if(!r.live && !r.canned) $('#hyNote').textContent+=' Live answers need an API key.';
   $('#footnote').textContent=r.live?`Retrieval ran on your computer. Answers were written live by ${state.status.answer_model}${r.vector.grade?', and graded against the reference answer by '+state.status.work_model:''}. Latency is measured; this question cost about $${(r.meter.dollars||0).toFixed(4)}.`
     :(r.canned?'Demo mode: retrieval ran live, but these answers were pre-written from exactly the evidence shown. Add an API key for live answers. Latency figures are typical values, not measurements.'
@@ -497,19 +501,34 @@ function fillAnswers(item,r,run){
 // ---------- voting & lessons ----------
 document.querySelectorAll('#votes button').forEach(b=>b.onclick=async ()=>{
   const it=state.current, r=state.last; if(!it||!r) return;
-  const grades={vector:(r.vector.grade||{}).grade,graph:(r.graph.grade||{}).grade,hybrid:(r.hybrid.grade||{}).grade};
+  const grades={vector:(r.vector.grade||{}).grade,graph:(r.graph.grade||{}).grade,hybrid:(r.hybrid.grade||{}).grade,agent:(r.agent.grade||{}).grade};
   if(state.status.public){ state.votes[it.id||it.q]={q:it.q,vote:b.dataset.v,grades,t:Date.now()}; saveLocalVotes(state.votes); }
   else { try{ state.votes=await api(`/api/datasets/${state.ds}/votes`,{method:'POST',body:{qid:it.id,question:it.q,vote:b.dataset.v,grades}}); }catch(e){} }
   document.querySelectorAll('#votes button').forEach(x=>x.setAttribute('aria-pressed',x===b));
   renderDeck(); showLesson(); updateScore();
 });
 function gradePill(sel,gr){ const el=$(sel); if(!gr){ el.hidden=true; return; } el.hidden=false; el.className='pill '+(gr.grade==='correct'?'ok':gr.grade==='wrong'?'bad':gr.grade); el.textContent=gr.grade==='correct'?'correct':gr.grade==='partial'?'partly right':gr.grade==='wrong'?'wrong or incomplete':'not graded'; el.title=gr.why||''; }
+function renderAgentSteps(ag,r,run){
+  const d=D(); const ol=$('#agSteps'); ol.innerHTML='';
+  const cost=s=>r.live&&s.tokens?`<span class="cost">${s.tokens.toLocaleString()} tok · $${s.dollars.toFixed(4)}</span>`:'';
+  const html=ag.steps.map(s=>{
+    if(s.kind==='plan') return `<li class="plan"><b>Plan.</b> ${esc(s.text)}${s.rewritten?`<span class="found">Rewrote the question as: <span class="q">"${esc(s.rewritten)}"</span></span>`:''}${cost(s)}</li>`;
+    if(s.kind==='search') return `<li class="search ${s.tool}"><b>Search:</b> ${esc(s.text)}<span class="found">${esc(s.found||'')}</span></li>`;
+    if(s.kind==='check') return `<li class="check ${s.next?'no':''}"><b>${s.next?'Not enough yet.':'Check: enough.'}</b> ${esc(s.text)}${s.next?`<span class="found">Next: ${esc(s.next)}</span>`:''}${cost(s)}</li>`;
+    return `<li class="answer"><b>Answer.</b> ${esc(s.text)}${cost(s)}</li>`; });
+  if(!ag.steps.some(s=>s.kind==='answer')) html.push(`<li class="answer"><b>Answer.</b> ${r.canned?'Pre-written for the demo from the evidence gathered above.':'Writing the answer needs an API key.'}</li>`);
+  html.forEach((h,i)=>setTimeout(()=>{ if(run!==state.run) return; ol.insertAdjacentHTML('beforeend',h); },(900+i*450)*d));
+  const m=ag.meter||{};
+  if(r.live) setTimeout(()=>{ if(run===state.run) ol.insertAdjacentHTML('afterend',`<p class="note" id="agTotal" style="color:var(--faint);font-size:12px;margin:4px 0 0">${ag.searches} searches, ${m.calls} AI calls, ${(m.tokens||0).toLocaleString()} tokens, about $${(m.dollars||0).toFixed(4)} for the agent alone.</p>`); },(900+html.length*450)*d);
+  const old=$('#agTotal'); if(old) old.remove();
+}
 function showLesson(){
   const it=state.current, r=state.last; const L=$('#lesson'); L.hidden=false;
   const key=it.id||it.q; const vote=(state.votes[key]||{}).vote;
-  gradePill('#vecVerdict',r.vector.grade); gradePill('#grVerdict',r.graph.grade); gradePill('#hyVerdict',r.hybrid.grade);
-  const hyLine=`<p style="color:var(--muted)"><b style="color:var(--fg)">Hybrid</b> routed this to ${ROUTE_LABEL[r.route.route]}${r.hybrid.grade?` and the judge rated it <b>${esc(r.hybrid.grade.grade)}</b>`:''}, using ${r.hybrid.context_tokens} tokens of context.${r.route.route==='both'?' Merging is the safe choice, but it pays for both searches.':''}</p>`;
-  const judged=r.live&&r.vector.grade?`<p style="color:var(--muted)">The auto-judge compared each answer with the reference answer: vector <b>${esc(r.vector.grade.grade)}</b>, graph <b>${esc(r.graph.grade.grade)}</b>. Hover a result tag to see why.</p>`:'';
+  gradePill('#vecVerdict',r.vector.grade); gradePill('#grVerdict',r.graph.grade); gradePill('#hyVerdict',r.hybrid.grade); gradePill('#agVerdict',r.agent.grade);
+  const hyLine=`<p style="color:var(--muted)"><b style="color:var(--fg)">Hybrid</b> routed this to ${ROUTE_LABEL[r.route.route]}${r.hybrid.grade?` and the judge rated it <b>${esc(r.hybrid.grade.grade)}</b>`:''}, using ${r.hybrid.context_tokens} tokens of context.${r.route.route==='both'?' Merging is the safe choice, but it pays for both searches.':''}</p>
+    <p style="color:var(--muted)"><b style="color:var(--agent)">Agentic</b> took ${r.agent.searches} search${r.agent.searches===1?'':'es'}${r.agent.grade?` and was rated <b>${esc(r.agent.grade.grade)}</b>`:''}. ${r.agent.searches>1?'Each extra round costs time and tokens; that\'s the price of being able to change course.':'When the first search is enough, the agent costs little more than the simple router.'}</p>`;
+  const judged=r.live&&r.vector.grade?`<p style="color:var(--muted)">The auto-judge compared each answer with the reference answer: vector <b>${esc(r.vector.grade.grade)}</b>, graph <b>${esc(r.graph.grade.grade)}</b>, hybrid <b>${esc(r.hybrid.grade.grade)}</b>, agentic <b>${esc((r.agent.grade||{}).grade||'?')}</b>. Hover a result tag to see why.</p>`:'';
   if(it.custom){
     const g=r.graph; let msg;
     if(g.mode==='global') msg='Your question asked for the big picture, which triggers GraphRAG\'s global search over community summaries. Vector search can only return a handful of passages, so it rarely covers a whole collection.';
@@ -530,14 +549,14 @@ function updateScore(){ const done=state.questions.filter(s=>state.votes[s.id]).
 // ================= debrief =================
 function renderDebrief(){
   const qs=state.questions; const voted=qs.filter(s=>state.votes[s.id]);
-  const tally={vector:0,graph:0,tie:0,neither:0}; voted.forEach(s=>tally[state.votes[s.id].vote]++);
-  $('#debriefLede').textContent=voted.length?`You judged ${voted.length} of ${qs.length} test questions on ${curMeta().name}: vector won ${tally.vector}, graph won ${tally.graph}, ${tally.tie} tie${tally.tie===1?'':'s'}. Neither approach wins overall. Each one wins a different kind of question.`
+  const tally={vector:0,graph:0,hybrid:0,agentic:0,tie:0,neither:0}; voted.forEach(s=>{ const v=state.votes[s.id].vote; tally[v]=(tally[v]||0)+1; });
+  $('#debriefLede').textContent=voted.length?`You judged ${voted.length} of ${qs.length} test questions on ${curMeta().name}: vector won ${tally.vector}, graph ${tally.graph}, hybrid ${tally.hybrid}, agentic ${tally.agentic}, and ${tally.tie} tie${tally.tie===1?'':'s'}. Vector and graph each win a different kind of question; combining them helps, and an agent that can change course helps most, at a higher cost per question.`
     :'You haven\'t voted yet. Here is what each question type usually shows. Try a few in the duel to fill in your own column.';
   const gp=(g)=>g?`<span class="pill ${g==='correct'?'ok':g==='wrong'?'bad':g}">${g==='correct'?'right':g==='partial'?'partly':g==='wrong'?'missed':'?'}</span>`:'<span style="color:var(--faint)">not run</span>';
   const customs=Object.entries(state.votes).filter(([k])=>!qs.find(q=>q.id===k)).map(([k,v])=>({id:k,label:'Your question',q:v.q,custom:true}));
-  $('#resultsTable').innerHTML=`<thead><tr><th>Question type</th><th>Question</th><th>Vector</th><th>Graph</th><th>Hybrid</th><th>Your vote</th><th>Lesson's pick</th><th>Rule of thumb</th></tr></thead><tbody>${
+  $('#resultsTable').innerHTML=`<thead><tr><th>Question type</th><th>Question</th><th>Vector</th><th>Graph</th><th>Hybrid</th><th>Agentic</th><th>Your vote</th><th>Lesson's pick</th><th>Rule of thumb</th></tr></thead><tbody>${
     [...qs,...customs].map(s=>{ const vv=state.votes[s.id]; const gr=(vv&&vv.grades)||{}; const t=state.types[s.type]||{};
-      return `<tr><td>${esc(s.label)}</td><td class="q">${esc(s.q)}</td><td>${gp(gr.vector)}</td><td>${gp(gr.graph)}</td><td style="white-space:nowrap">${gp(gr.hybrid)}</td>
+      return `<tr><td>${esc(s.label)}</td><td class="q">${esc(s.q)}</td><td>${gp(gr.vector)}</td><td>${gp(gr.graph)}</td><td style="white-space:nowrap">${gp(gr.hybrid)}</td><td>${gp(gr.agent)}</td>
       <td>${vv?`<span class="pill ${vv.vote==='neither'?'tie':vv.vote}">${WIN_LABEL[vv.vote]}</span>`:'<span style="color:var(--faint)">not tried</span>'}</td>
       <td>${s.expect?`<span class="pill ${s.expect}">${WIN_LABEL[s.expect]}</span>`:''}</td><td class="q">${esc(s.rule||t.rule||'')}</td></tr>`; }).join('')}</tbody>`;
 }
@@ -647,7 +666,7 @@ const SLIDES=[
  <ol class="how"><li><b>Routing:</b> check what kind of question it is, then send it to the right search.</li>
  <li><b>Run both and merge:</b> search both ways and combine the results, often with a ranking model picking the best pieces.</li>
  <li><b>Graph-enhanced vector search:</b> find passages by meaning first, then follow graph connections out from the names in them.</li>
- <li><b>Agentic:</b> give the AI both search tools and let it decide, step by step, which to use.</li></ol>
+ <li><b>Agentic:</b> give the AI the search tools and let it decide, step by step, which to use and when it has enough.</li></ol>
  <div class="catch"><b>Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs). Full GraphRAG is used where relationships really matter, because building the graph is expensive.</div>`,
  visual:`<div class="routes">
   <div class="box pop">"Which business does the council chair's sister run?"</div>
@@ -659,7 +678,7 @@ const SLIDES=[
    <div class="pop" style="animation-delay:1.2s"><b style="color:var(--fg)">Both</b>Named things that may need details too. "Which business does the chair's sister run?"</div>
    <div class="pop" style="animation-delay:1.4s"><b style="color:var(--graph)">Graph</b>Complete lists, big picture. "List everyone connected to Gull Point."</div>
   </div>
- </div><p class="small">In the Duel, a third contestant called Hybrid uses this kind of router, so you can see what combining costs and gains.</p>`},
+ </div><p class="small">In the Duel, Hybrid uses a router like this. A fourth contestant, Agentic, goes further: it rewrites the question, checks its evidence, and searches again when it falls short.</p>`},
 {eyebrow:'Your test lab',title:'Meet Larkspur Cove',
  copy:`<p>Larkspur Cove is an invented harbor town with 17 short news articles: a seawall fight, a lighthouse restoration, a ferry, a few feuds.</p>
  <p>Because it's fictional, the AI can't answer from its training data. Every right answer has to come from the search, which is exactly what we want to test.</p>`,

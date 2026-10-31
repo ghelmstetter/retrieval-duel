@@ -1,6 +1,6 @@
 # Retrieval Duel
 
-**This app compares Vector RAG vs GraphRAG vs Hybrid, side by side.** It's also a hands-on tutorial: load a set of documents, watch both kinds of retrieval index them, then ask questions and watch each one search, with the evidence it found laid out so you can judge. It generates test questions designed to expose each method's strengths and blind spots, and grades the answers.
+**This app compares Vector RAG, GraphRAG, a simple Hybrid and an Agentic retriever, side by side.** It's also a hands-on tutorial: load a set of documents, watch both kinds of retrieval index them, then ask questions and watch each one search, with the evidence it found laid out so you can judge. It generates test questions designed to expose each method's strengths and blind spots, and grades the answers.
 
 It's built for learning, not production. Everything is small, visible and explained.
 
@@ -11,7 +11,7 @@ It's built for learning, not production. Everything is small, visible and explai
 1. **Basics**: an 8-screen walkthrough for people who've never heard of RAG.
 2. **Load**: pick the built-in demo or upload your own files, see a cost estimate, then index. Vector embeddings run on your computer; Claude reads each document to build the knowledge graph.
 3. **Profile**: what kind of corpus this is, and what that predicts (how connected it is, how many details survive extraction, what indexing cost).
-4. **Duel**: ask a question. Vector RAG, GraphRAG and a Hybrid router all answer, with animated retrieval on a 2D map of passages and on the knowledge graph.
+4. **Duel**: ask a question. Four contestants answer: Vector RAG, GraphRAG, a simple Hybrid router, and an Agentic retriever that shows each step of its reasoning. Retrieval is animated on a 2D map of passages and on the knowledge graph.
 5. **Debrief**: your results by question type, plus a guide to when to use which.
 
 ![The Load step: the Larkspur Gazette demo, one-click public datasets, and your own uploads, with a cost estimate before indexing](docs/images/load.jpg)
@@ -79,6 +79,10 @@ Choose small, medium or large. Nothing is sent to Claude until you click Index, 
 | Search | Nearest passages to the question (top 5) | **Local:** find entities the question names (or resembles), walk 2 hops, keep the most relevant 30 facts. **Global:** for big-picture questions, read the community summaries | A router (Claude, or simple rules without a key) sends the question to vector, graph, or both |
 | Answer | Claude answers from the passages only | Claude answers from the facts or summaries only | Claude answers from the chosen evidence |
 
+**Agentic** works in a loop instead of one shot: Claude rewrites the question into the words the documents are likely to use, picks one or two searches (vector, a graph walk from entities it names, or the community summaries), checks whether the evidence is enough, and if not chooses a follow-up search, up to three in total. Then it answers from everything it gathered. Its card shows every step with its token cost. Without an API key it can't think, so it falls back to simple rules; in the demo, each sample question has a pre-written plan whose searches still run live.
+
+**Case study: "Who is in charge of the town?"** The Larkspur demo includes this question because it came up in real testing and every one-shot approach fails on it, each for a different reason. Vector search matches only "town" (the article says "chair" and "council"), GraphRAG has no name to start from, and the simple Hybrid routes to vector search and answers from the wrong passages. The agent rewrites the question, finds Mara Quill's election as council chair, notices it can't yet rule out a mayor, and walks the graph from the Harbor Council to confirm.
+
 **Test questions** are generated per type: a single fact (a passage with a number), multi-hop and hidden-link chains (two-step paths in the graph whose facts come from different documents; "hidden link" means vector search was checked and missed the second document), a comparison, a complete list (the best-connected entity), a big-picture question (from community summaries), a vague question (a passage that names no entities), and an unanswerable one (a detail the passage doesn't contain). Each comes with a reference answer, and Claude grades all three answers against it.
 
 **Simplifications, on purpose:** this is a teaching version of GraphRAG, not a reproduction of Microsoft's. Entity merging is name-based, global search reads all summaries in one call instead of a full map-reduce, and the graph answer deliberately gets only extracted facts (no original text) so you can see what extraction loses. Generated questions lean on the graph, so a bad extraction can produce a bad question; check the reference answer when a result looks odd.
@@ -97,6 +101,7 @@ rduel/            Python package
   graph_index.py  extraction, entity merging, communities, local/global search
   questions.py    test-question generator
   qa.py           router, answer prompt, auto-judge
+  agent.py        the Agentic contestant: plan, search, check, search again
   catalog.py      one-click importers for public datasets
   pipeline.py     datasets, indexing job, asking all three
   server.py       web API (Starlette)
@@ -110,7 +115,7 @@ tests/            offline tests (python -m tests.test_catalog, python -m tests.t
 
 ## Ideas for later
 
-A reranker, keyword (BM25) search as a fourth contestant, agentic retrieval, and side-by-side runs of Microsoft GraphRAG or LightRAG on the same corpus.
+A reranker, keyword (BM25) search as another contestant, and side-by-side runs of Microsoft GraphRAG or LightRAG on the same corpus.
 
 ## License
 

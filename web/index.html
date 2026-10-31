@@ -14,7 +14,7 @@
   --fg:#e9eef7; --muted:#8fa0bd; --faint:#5f7193;
   --vec:#3fd6c8; --vec-dim:rgba(63,214,200,.14);
   --graph:#ffb547; --graph-dim:rgba(255,181,71,.14);
-  --query:#ff5f8f; --ok:#6be38b; --bad:#ff6b6b; --tie:#b6c2d9;
+  --query:#ff5f8f; --agent:#c4a6ff; --ok:#6be38b; --bad:#ff6b6b; --tie:#b6c2d9;
   --display:'Unbounded', 'Arial Black', system-ui, sans-serif;
   --body:'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
   --mono:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -145,7 +145,7 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
 .lesson .rule .eyebrow{margin-bottom:4px}
 .lesson .rule p{font-weight:600}
 .pill{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid}
-.pill.vector{color:var(--vec);border-color:var(--vec)} .pill.graph{color:var(--graph);border-color:var(--graph)} .pill.tie{color:var(--tie);border-color:var(--tie)}
+.pill.vector{color:var(--vec);border-color:var(--vec)} .pill.agentic{color:var(--agent);border-color:var(--agent)} .pill.hybrid{color:#9ee6b8;border-color:#9ee6b8} .pill.graph{color:var(--graph);border-color:var(--graph)} .pill.tie{color:var(--tie);border-color:var(--tie)}
 .pill.ok{color:var(--ok);border-color:var(--ok)} .pill.bad{color:var(--bad);border-color:var(--bad)}
 .score{font-family:var(--mono);font-size:12px;color:var(--muted)}
 
@@ -281,6 +281,21 @@ a.btn{text-decoration:none;display:inline-block}
 .site-foot p{margin:0;max-width:90ch}
 .site-foot a{color:var(--vec)}
 .site-foot .fine{font-size:12px;color:var(--faint)}
+.ans.ag{border-top:2px solid var(--agent)}
+.ans.ag .who span:first-child{font-family:var(--display);font-weight:700;font-size:13px;color:var(--agent)}
+.ans.ag .bar i{background:var(--agent)}
+.votes button[data-v="agentic"]:not([aria-pressed="true"]){color:var(--agent)} .votes button[data-v="hybrid"]:not([aria-pressed="true"]){color:#9ee6b8}
+.agsteps{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:0;counter-reset:st}
+.agsteps li{position:relative;padding:4px 0 10px 30px;font-size:13px;line-height:1.45;color:var(--muted)}
+.agsteps li::before{counter-increment:st;content:counter(st);position:absolute;left:0;top:3px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:11px;background:var(--deck2);border:1px solid var(--line2);color:var(--fg)}
+.agsteps li:not(:last-child)::after{content:"";position:absolute;left:10px;top:24px;bottom:0;border-left:1px dashed var(--line2)}
+.agsteps li.search::before{border-color:var(--vec)} .agsteps li.search.graph::before{border-color:var(--graph)}
+.agsteps li.check::before{border-color:var(--agent)} .agsteps li.check.no::before{background:rgba(196,166,255,.2)}
+.agsteps li.answer::before{background:var(--agent);color:var(--ink);border-color:var(--agent)}
+.agsteps b{color:var(--fg);font-weight:600}
+.agsteps .q{color:#ffc2d4}
+.agsteps .found{display:block;color:var(--faint);font-size:12px}
+.agsteps .cost{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:6px}
 .cap{padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.45}
 .cap b{color:var(--fg);font-weight:600}
 /* slide animations, replayed each time a slide opens */
@@ -400,12 +415,12 @@ a.btn{text-decoration:none;display:inline-block}
 <section class="step" id="step-duel" hidden>
   <div class="eyebrow">Step 4 · Duel</div>
   <h2>Ask one question, watch both retrieve</h2>
-  <p class="lede">Pick a card. Each one tests a different kind of question. Guess the winner first, then vote on which answer was better. A third contestant, <b>Hybrid</b>, answers too: its router looks at the question and decides whether to use vector search, the graph, or both.</p>
+  <p class="lede">Pick a card. Each one tests a different kind of question. Guess the winner first, then vote on which answer was better. Two more contestants answer too. <b>Hybrid</b> makes one routing decision: vector search, the graph, or both. <b>Agentic</b> thinks in steps: it rewrites the question, searches, checks whether it has enough, and searches again if not.</p>
   <div class="deck" id="deck"></div>
   <form class="ask" id="askForm">
     <label for="q" class="eyebrow" style="flex-basis:100%" id="qLabel">Or type your own question</label>
     <input id="q" autocomplete="off" placeholder="e.g. Who opposes the seawall?">
-    <button class="btn" type="submit">Ask all three</button>
+    <button class="btn" type="submit">Ask all four</button>
   </form>
   <div class="predict" id="predict"></div>
   <div class="router" id="router" hidden>
@@ -454,25 +469,32 @@ a.btn{text-decoration:none;display:inline-block}
       <details class="ev" open><summary>Evidence it retrieved</summary><ul class="evlist" id="grEv"></ul></details>
     </div>
   </div>
+  <div class="answers" style="align-items:start">
   <div class="ans hy">
-    <div class="who"><span>Hybrid answer · third contestant</span><span class="pill" id="hyVerdict" hidden></span></div>
-    <div class="hymeta">
-      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
-        <div class="text" id="hyText"></div>
-        <div class="note" id="hyNote"></div>
-      </div>
-      <div class="meters">
-        <span>context</span><div class="bar"><i id="hyBar" style="width:0"></i></div><span class="num" id="hyTok">0 tok</span>
-        <span>latency</span><div class="bar"><i id="hyLatBar" style="width:0"></i></div><span class="num" id="hyLat">0.0 s</span>
-      </div>
+    <div class="who"><span>Hybrid answer · simple router</span><span class="pill" id="hyVerdict" hidden></span></div>
+    <div class="text" id="hyText"></div>
+    <div class="meters">
+      <span>context</span><div class="bar"><i id="hyBar" style="width:0"></i></div><span class="num" id="hyTok">0 tok</span>
+      <span>latency</span><div class="bar"><i id="hyLatBar" style="width:0"></i></div><span class="num" id="hyLat">0.0 s</span>
     </div>
+    <div class="note" id="hyNote"></div>
+  </div>
+  <div class="ans ag">
+    <div class="who"><span>Agentic answer · plans, checks, searches again</span><span class="pill" id="agVerdict" hidden></span></div>
+    <div class="text" id="agText"></div>
+    <div class="meters">
+      <span>context</span><div class="bar"><i id="agBar" style="width:0"></i></div><span class="num" id="agTok">0 tok</span>
+      <span>latency</span><div class="bar"><i id="agLatBar" style="width:0"></i></div><span class="num" id="agLat">0.0 s</span>
+    </div>
+    <details class="ev" open><summary>How it got there</summary><ol class="agsteps" id="agSteps"></ol></details>
+  </div>
   </div>
   <div class="verdict">
     <div class="row" style="justify-content:space-between">
-      <h3>Which answer is better?</h3><span class="score" id="score"></span>
+      <h3>Which answer is best?</h3><span class="score" id="score"></span>
     </div>
     <div class="votes" id="votes">
-      <button data-v="vector">Vector</button><button data-v="tie">Tie</button><button data-v="graph">Graph</button><button data-v="neither">Both wrong</button>
+      <button data-v="vector">Vector</button><button data-v="graph">Graph</button><button data-v="hybrid">Hybrid</button><button data-v="agentic">Agentic</button><button data-v="tie">Tie</button><button data-v="neither">All wrong</button>
     </div>
     <div class="lesson" id="lesson" hidden></div>
   </div>
@@ -514,7 +536,7 @@ a.btn{text-decoration:none;display:inline-block}
       <li><b>Routing:</b> check what kind of question it is, then send it to the right search. This is what Hybrid does in the duel.</li>
       <li><b>Run both and merge:</b> search both ways and combine the results, often with a ranking model picking the best pieces. Rarely misses, costs more per question.</li>
       <li><b>Graph-enhanced vector search:</b> find passages by meaning first, then follow graph connections out from the names in them. This fixes GraphRAG's "needs a name to start" problem. Popular GraphRAG tools such as Microsoft GraphRAG and LightRAG already blend the two internally.</li>
-      <li><b>Agentic retrieval:</b> give the AI both search tools and let it decide, step by step, which to use and when it has enough evidence.</li></ul>
+      <li><b>Agentic retrieval:</b> give the AI the search tools and let it decide, step by step, which to use and when it has enough evidence. This is what Agentic does in the duel. Try the "Who is in charge of the town?" case study to see why it matters.</li></ul>
       <p><b style="color:var(--fg)">Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs), plus a ranking model. Full GraphRAG is used more selectively, where relationships really matter, because building the graph is expensive.</p></div>
   </div>
   <div class="row"><button class="btn ghost" id="resetVotes">Clear my votes</button><button class="btn big" data-goto="duel">Back to the duel →</button></div>

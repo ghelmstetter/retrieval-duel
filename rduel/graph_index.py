@@ -219,8 +219,22 @@ class GraphIndex:
                     seeds[eid] = "similar"
         return [{"id": k, "how": v, "name": self.byid[k]["name"]} for k, v in seeds.items()]
 
-    def local_search(self, question):
-        seeds = self.link(question)
+    def find_entities(self, names):
+        """Match names the agent chose (e.g. "Harbor Council") to graph entities."""
+        out = []
+        for name in names or []:
+            n = norm(str(name))
+            if not n:
+                continue
+            hit = next((e for e in self.entities if n in e["aliases"] or n == norm(e["name"])), None)
+            if not hit:
+                hit = next((e for e in self.entities if len(n) >= 4 and (n in norm(e["name"]) or norm(e["name"]) in n)), None)
+            if hit and hit["id"] not in [o["id"] for o in out]:
+                out.append({"id": hit["id"], "how": "chosen", "name": hit["name"]})
+        return out
+
+    def local_search(self, question, seeds=None):
+        seeds = self.link(question) if seeds is None else seeds
         if not seeds:
             return {"mode": "local", "seeds": [], "hops": [], "nodes": [], "facts": [], "key_facts": [],
                     "context": "", "context_tokens": 0}

@@ -15,13 +15,32 @@
    "hybrid": "The ferry stops running on November 15 and resumes on April 1.",
    "vector_ok": true,
    "graph_ok": false,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "The Saltmarsh Ferry stops running on November 15 and resumes on April 1.",
+   "agent_ok": true
   },
   "path": [
    "boatworks",
    "ferry",
    "sadie"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Saltmarsh Ferry winter schedule: when does it stop running and resume?",
+   "why": "A specific date is needed, so search the passages for the ferry's schedule.",
+   "actions": [
+    {
+     "tool": "vector",
+     "query": "Saltmarsh Ferry stop running winter schedule November resume"
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "The passage gives both dates: it stops November 15 and resumes April 1.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q2",
@@ -39,14 +58,39 @@
    "hybrid": "Mara Quill chairs the Harbor Council. Her sister, Ines Quill, owns The Brass Kettle cafe on Front Street and also organizes the Harvest Market.",
    "vector_ok": true,
    "graph_ok": true,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Mara Quill chairs the Harbor Council. Her sister, Ines Quill, owns The Brass Kettle, a cafe on Front Street. She also organizes the Harvest Market.",
+   "agent_ok": true
   },
   "path": [
    "council",
    "mara",
    "ines",
    "kettle"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Who chairs the Harbor Council, who is her sister, and what business does the sister run?",
+   "why": "This is a chain (chair → sister → business), so walk the graph from the Harbor Council, and check the passages too.",
+   "actions": [
+    {
+     "tool": "graph",
+     "entities": [
+      "Harbor Council"
+     ]
+    },
+    {
+     "tool": "vector",
+     "query": "council chair sister business cafe"
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "The graph links Mara Quill (chair) to her sister Ines Quill, who owns The Brass Kettle; a passage confirms it.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q3",
@@ -64,13 +108,42 @@
    "hybrid": "Northgate Capital is paying for it. It funds the seawall, which would smother the Gull Point eelgrass. Amos Pike proposed the project.",
    "vector_ok": false,
    "graph_ok": true,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Northgate Capital. The seawall would smother the Gull Point eelgrass beds, and Northgate pledged $3 million toward it. Councilor Amos Pike proposed the project, but the money comes from Northgate.",
+   "agent_ok": true
   },
   "path": [
    "eelgrass",
    "seawall",
    "northgate"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Which project would smother the eelgrass, and who funds that project?",
+   "why": "Find the project that harms the eelgrass, then follow the money to whoever funds it.",
+   "actions": [
+    {
+     "tool": "graph",
+     "entities": [
+      "Eelgrass Beds"
+     ]
+    }
+   ],
+   "checks": [
+    {
+     "enough": false,
+     "note": "The graph says the seawall would smother the eelgrass and Northgate Capital funds it. A passage with the amount would make the answer stronger.",
+     "next": {
+      "tool": "vector",
+      "query": "who pledged money toward the seawall funding"
+     }
+    },
+    {
+     "enough": true,
+     "note": "A passage confirms Northgate Capital pledged $3 million toward the seawall.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q4",
@@ -88,13 +161,32 @@
    "hybrid": "Amos Pike proposed the $14 million seawall and objected to delaying the vote. Otto Brandt opposes it because it would cut his boatyard off from the water.",
    "vector_ok": true,
    "graph_ok": true,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Amos Pike proposed the $14 million seawall and objected to delaying the vote. Otto Brandt opposes it because it would cut his boatyard off from the water.",
+   "agent_ok": true
   },
   "path": [
    "pike",
    "seawall",
    "otto"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Amos Pike's position on the seawall versus Otto Brandt's position and reasons.",
+   "why": "Two named people, one topic: search the passages for each one's stance.",
+   "actions": [
+    {
+     "tool": "vector",
+     "query": "Otto Brandt Amos Pike seawall position oppose proposed"
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "Passages give both sides: Pike proposed it, Brandt says it would cut his yard off from the water.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q5",
@@ -112,7 +204,9 @@
    "hybrid": "Amos Pike (proposed the seawall there), Northgate Capital (condos, and money for the seawall), Felix Arden (eelgrass survey), Wen Liu (found the 1903 charter), Juno Reyes (champions the charter), Mara Quill (controls the seawall vote) and Otto Brandt (opposes the seawall).",
    "vector_ok": false,
    "graph_ok": true,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Amos Pike (proposed the seawall there), Northgate Capital (condos, and money for the seawall), Felix Arden (eelgrass survey), Wen Liu (found the 1903 charter), Juno Reyes (champions the charter), Mara Quill (controls the seawall vote) and Otto Brandt (opposes the seawall).",
+   "agent_ok": true
   },
   "path": [
    "gullpoint",
@@ -120,7 +214,26 @@
    "condos",
    "eelgrass",
    "charter"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Every person and organization connected to Gull Point.",
+   "why": "A complete list needs every connection, so walk the graph from Gull Point.",
+   "actions": [
+    {
+     "tool": "graph",
+     "entities": [
+      "Gull Point"
+     ]
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "The graph walk found everyone linked to Gull Point through the seawall, the condos, the eelgrass and the charter.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q6",
@@ -138,9 +251,27 @@
    "hybrid": "Three conflicts stand out. The seawall: Amos Pike and Northgate Capital back it, while Otto Brandt and the eelgrass findings stand against it, and Mara Quill has delayed the vote. Gull Point: Northgate's condos versus the 1903 charter guaranteeing public access. Flooding: Front Street floods at king tides, and a living shoreline is being tested as an alternative to the wall.",
    "vector_ok": false,
    "graph_ok": true,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Three conflicts stand out. The seawall: Amos Pike and Northgate Capital back it, while Otto Brandt and the eelgrass findings stand against it, and Mara Quill has delayed the vote. Gull Point: Northgate's condos versus the 1903 charter guaranteeing public access. Flooding: Front Street floods at king tides, and a living shoreline is being tested as an alternative to the wall.",
+   "agent_ok": true
   },
-  "path": []
+  "path": [],
+  "agent_script": {
+   "rewritten": "Main conflicts and disputes in Larkspur Cove this year.",
+   "why": "A big-picture question, so read the topic summaries instead of hunting for one passage.",
+   "actions": [
+    {
+     "tool": "summaries"
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "The summaries cover the seawall fight, the condos vs. the charter, and flooding.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q7",
@@ -158,9 +289,28 @@
    "hybrid": "Yes. Residents packed a forum on rising tides at The Brass Kettle, and several said their basements now fill at every king tide. After Storm Ada, residents also worried the next storm would be worse.",
    "vector_ok": true,
    "graph_ok": false,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "Yes. Residents packed a forum on rising tides at The Brass Kettle, and several said their basements now fill at every king tide. After Storm Ada, residents also worried the next storm would be worse.",
+   "agent_ok": true
   },
-  "path": []
+  "path": [],
+  "agent_script": {
+   "rewritten": "Are residents worried about flooding, rising tides, king tides, storms or water in basements?",
+   "why": "No names in the question, so search the passages with flooding-related words the articles might use.",
+   "actions": [
+    {
+     "tool": "vector",
+     "query": "residents worried flooding rising tides king tide basements storm"
+    }
+   ],
+   "checks": [
+    {
+     "enough": true,
+     "note": "Passages describe a packed forum on rising tides, flooded basements, and fears after Storm Ada.",
+     "next": null
+    }
+   ]
+  }
  },
  {
   "id": "q8",
@@ -178,11 +328,92 @@
    "hybrid": "The archive only reports the 2026 regatta, which Sadie Brandt won. It has no information about 2025.",
    "vector_ok": true,
    "graph_ok": false,
-   "hybrid_ok": true
+   "hybrid_ok": true,
+   "agent": "The documents don't say who won in 2025. They only report the 2026 Larkspur Regatta, which Sadie Brandt won in a skiff built at her father's boatyard.",
+   "agent_ok": true
   },
   "path": [
    "sadie",
    "regatta"
-  ]
+  ],
+  "agent_script": {
+   "rewritten": "Winner of the Larkspur Regatta in 2025.",
+   "why": "A specific year is asked, so check the passages for regatta results.",
+   "actions": [
+    {
+     "tool": "vector",
+     "query": "Larkspur Regatta 2025 winner"
+    }
+   ],
+   "checks": [
+    {
+     "enough": false,
+     "note": "The only result found is for 2026. Check the graph in case another year is recorded.",
+     "next": {
+      "tool": "graph",
+      "entities": [
+       "Larkspur Regatta"
+      ]
+     }
+    },
+    {
+     "enough": true,
+     "note": "The graph has no other year either. The documents don't cover 2025.",
+     "next": null
+    }
+   ]
+  }
+ },
+ {
+  "id": "q9",
+  "type": "wording_gap",
+  "label": "Case study: wording gap",
+  "q": "Who is in charge of the town?",
+  "answer": "The documents mention no mayor. The closest is Mara Quill, chair of the Larkspur Harbor Council.",
+  "expect": "agentic",
+  "sources": [],
+  "path": [
+   "council",
+   "mara"
+  ],
+  "lesson": "This question came up in real testing, and every simple approach fails on it for a different reason. Vector search matched only the word \"town\" and pulled up passages about the ferry and the charter, because \"in charge\" and \"chair\" share no words. GraphRAG needs a name to start from, and \"the town\" isn't one. The simple Hybrid made a single routing decision (vector, since nothing was named) and answered from the wrong passages. The agent rewrote the question with words the articles might use (mayor, council, chair), found the article about Mara Quill's election, noticed it still couldn't rule out a mayor, and walked the graph from the Harbor Council to confirm. More steps and more cost, but the right answer.",
+  "rule": "When the question's words don't match the documents' words, let an agent rewrite the question and search again.",
+  "canned": {
+   "vector": "The evidence doesn't say who is in charge of the town. It mentions Brandt Boatworks, which has built and maintained the town ferry since 1988, and Juno Reyes, who called the charter \"the oldest promise the town ever made,\" but neither is described as leading the town.",
+   "graph": "Nothing in the question matched a person, place or organization in the graph, so there was nothing to search. I can't answer.",
+   "hybrid": "The evidence doesn't say who is in charge of the town. It mentions Brandt Boatworks, which has maintained the town ferry since 1988, and Juno Reyes, who called the charter \"the oldest promise the town ever made.\" Neither is described as holding authority over the town, and no mayor, council or other leader is named.",
+   "agent": "The articles never mention a mayor. The closest thing to a town leader is Mara Quill, who was elected chair of the Larkspur Harbor Council on a 5 to 2 vote. As chair, she postponed the council's seawall vote until the eelgrass report is in.",
+   "vector_ok": false,
+   "graph_ok": false,
+   "hybrid_ok": false,
+   "agent_ok": true
+  },
+  "agent_script": {
+   "rewritten": "Who leads or governs Larkspur Cove: a mayor, a council, a chair, or another official?",
+   "why": "\"In charge of the town\" probably isn't how the articles say it, so rewrite it with words like mayor, council and chair.",
+   "actions": [
+    {
+     "tool": "vector",
+     "query": "mayor town leader council chair elected governs"
+    }
+   ],
+   "checks": [
+    {
+     "enough": false,
+     "note": "A passage says Mara Quill was elected chair of the Harbor Council, but nothing yet about a mayor or what the council controls. Walk the graph from the Harbor Council.",
+     "next": {
+      "tool": "graph",
+      "entities": [
+       "Harbor Council"
+      ]
+     }
+    },
+    {
+     "enough": true,
+     "note": "The graph confirms Mara Quill chairs the Harbor Council and postponed its seawall vote. No mayor appears anywhere.",
+     "next": null
+    }
+   ]
+  }
  }
 ]
