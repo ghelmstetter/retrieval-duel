@@ -22,6 +22,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--ink)}
+html{overflow-y:scroll;scrollbar-gutter:stable}
 body{color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
   background-image:radial-gradient(circle at 1px 1px, rgba(143,160,189,.09) 1px, transparent 0);background-size:22px 22px;}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--ink)}
