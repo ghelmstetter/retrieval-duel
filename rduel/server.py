@@ -51,6 +51,9 @@ def _local_only():
 def _ds(request):
     slug = request.path_params["slug"]
     ds = Dataset(slug)
+    if not ds.meta:  # a fresh serverless copy may not have set up the demo yet
+        pipeline.ensure_demo(force=True)
+        ds = Dataset(slug)
     if not ds.meta:
         raise ValueError(f"No dataset called {slug}.")
     return ds
@@ -205,3 +208,4 @@ routes = [
 ]
 
 app = Starlette(routes=routes)
+pipeline.ensure_demo()  # set up the demo as soon as this copy of the app starts

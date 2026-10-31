@@ -27,8 +27,19 @@ def _write(p, data):
 
 
 # ---------------- datasets ----------------
-def ensure_demo():
-    """Copy the bundled demo datasets into the data folder the first time the app runs."""
+_DEMO_READY = False
+
+
+def ensure_demo(force=False):
+    """Copy the bundled demo datasets into the data folder (once per running process).
+
+    On serverless hosts each copy of the app starts with an empty scratch folder, so this
+    runs when the server starts and again whenever a dataset can't be found.
+    """
+    global _DEMO_READY
+    if _DEMO_READY and not force:
+        return
+    _DEMO_READY = True
     config.DATASETS_DIR.mkdir(parents=True, exist_ok=True)
     if not config.DEMO_DIR.exists():
         return
