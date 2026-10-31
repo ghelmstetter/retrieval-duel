@@ -106,6 +106,8 @@ def list_datasets():
         if (p / "meta.json").exists():
             out.append(Dataset(p.name).summary())
     out.sort(key=lambda m: (not m.get("demo"), m.get("created", 0)))
+    if config.PUBLIC_DEMO:
+        out = [m for m in out if m.get("demo")]
     return out
 
 
@@ -141,7 +143,7 @@ def catalog_list():
         m = _read(p / "meta.json", {})
         if m.get("catalog"):
             imported[m["catalog"]] = p.name
-    return [{**c, "imported": imported.get(c["id"])} for c in catalog.CATALOG]
+    return [{**c, "imported": None if config.PUBLIC_DEMO else imported.get(c["id"])} for c in catalog.CATALOG]
 
 
 def start_import(cat_id, size_id):
@@ -269,7 +271,16 @@ def _run_index(ds, job):
         def work(i):
             if meter.over_budget():
                 raise llm.BudgetExceeded(f"Stopped: indexing passed the ${config.MAX_INDEX_DOLLARS:.2f} budget set in .env.")
-            results[i] = graph_index.extract_unit(units[i], meter)
+            try:
+                results[i] = graph_index.extract_unit(units[i], meter)
+            except llm.BudgetExceeded:
+                raise
+            except Exception as e:  # one bad reply skips that document instead of stopping the run
+                traceback.print_exc()
+                results[i] = {"entities": [], "relations": [], "warning": str(e)}
+            if results[i].get("warning"):
+                with _LOCK:
+                    job.setdefault("warnings", []).append(f"{units[i]['title'][:60]}: {results[i]['warning']}")
             with _LOCK:
                 done[0] += 1
                 job["entities"] += len(results[i]["entities"])
@@ -318,10 +329,15 @@ def _run_index(ds, job):
         bench = questions.benchmark_entries(_read(ds.folder / "benchmark.json", []))
         _write(ds.folder / "questions.json", bench + qs)
 
-        ds.meta.update(status="ready", indexed=time.time(), stats=_stats(ds), index_cost=meter.as_dict())
+        skipped = len(job.get("warnings", []))
+        if skipped > len(units) / 2:
+            raise RuntimeError(f"Claude's replies couldn't be read for {skipped} of {len(units)} documents. First problem: {job['warnings'][0]}")
+        ds.meta.update(status="ready", indexed=time.time(), stats=_stats(ds), index_cost=meter.as_dict(),
+                       skipped_docs=skipped)
         ds.save_meta()
         with _LOCK:
-            job.update(status="done", stage="done", message="Both indexes are ready.", meter=meter.as_dict())
+            job.update(status="done", stage="done", meter=meter.as_dict(),
+                       message="Both indexes are ready." + (f" ({skipped} document(s) skipped: Claude's reply couldn't be read.)" if skipped else ""))
     except Exception as e:  # report any failure to the page
         traceback.print_exc()
         ds.meta["status"] = "error"; ds.meta["error"] = str(e); ds.save_meta()

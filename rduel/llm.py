@@ -103,30 +103,70 @@ def complete(system, user, *, model=None, max_tokens=1500, task="", meter=None):
     return text
 
 
-def complete_json(system, user, **kw):
-    """Like complete(), but parses a JSON object or list out of the reply."""
+def complete_json(system, user, *, expect=dict, **kw):
+    """Like complete(), but parses JSON out of the reply. `expect` is dict or list."""
     text = complete(system, user, **kw)
-    return parse_json(text)
+    return parse_json(text, expect)
 
 
-def parse_json(text):
+def _close_truncated(text):
+    """Repair JSON that was cut off mid-way (e.g. the reply hit its length limit).
+
+    Walk back to the last complete value, then close any open brackets.
+    """
+    start = min([i for i in (text.find("{"), text.find("[")) if i != -1], default=-1)
+    if start == -1:
+        return None
+    body = text[start:]
+    cuts = [m.start() + 1 for m in re.finditer(r"[}\]\"0-9el]", body)][::-1][:400]
+    for cut in cuts:
+        chunk = body[:cut]
+        stack, in_str, esc = [], False, False
+        for ch in chunk:
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch in "{[":
+                stack.append("}" if ch == "{" else "]")
+            elif ch in "}]" and stack:
+                stack.pop()
+        if in_str:
+            continue
+        candidate = re.sub(r",\s*$", "", chunk) + "".join(reversed(stack))
+        try:
+            return json.loads(re.sub(r",\s*([}\]])", r"\1", candidate))
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def parse_json(text, expect=dict):
     text = text.strip()
-    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.S)
-    if fence:
+    fence = re.search(r"```(?:json)?\s*(.*?)(?:```|$)", text, re.S)
+    if fence and fence.group(1).strip():
         text = fence.group(1).strip()
-    for opener, closer in (("{", "}"), ("[", "]")):
-        start = text.find(opener)
-        end = text.rfind(closer)
-        if start != -1 and end > start:
-            chunk = text[start:end + 1]
+    opener, closer = ("{", "}") if expect is dict else ("[", "]")
+    start, end = text.find(opener), text.rfind(closer)
+    if start != -1 and end > start:
+        chunk = text[start:end + 1]
+        for attempt in (chunk, re.sub(r",\s*([}\]])", r"\1", chunk)):
             try:
-                return json.loads(chunk)
+                data = json.loads(attempt)
+                if isinstance(data, expect):
+                    return data
             except json.JSONDecodeError:
-                # common repair: trailing commas
-                try:
-                    return json.loads(re.sub(r",\s*([}\]])", r"\1", chunk))
-                except json.JSONDecodeError:
-                    continue
+                pass
+    if start != -1:
+        data = _close_truncated(text[start:])
+        if isinstance(data, expect):
+            return data
     raise ValueError("Could not parse JSON from model reply: " + text[:200])
 
 

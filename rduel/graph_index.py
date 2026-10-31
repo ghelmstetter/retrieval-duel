@@ -49,11 +49,11 @@ def extraction_units(docs):
 def extract_unit(unit, meter):
     user = f"Title: {unit['title']}\n\nText:\n{unit['text']}"
     try:
-        data = llm.complete_json(EXTRACT_SYSTEM, user, task="extract", max_tokens=3000, meter=meter)
+        data = llm.complete_json(EXTRACT_SYSTEM, user, task="extract", max_tokens=8000, meter=meter)
     except ValueError:
-        return {"entities": [], "relations": []}
-    ents = [e for e in data.get("entities", []) if isinstance(e, dict) and e.get("name")]
-    rels = [r for r in data.get("relations", []) if isinstance(r, dict) and r.get("source") and r.get("target")]
+        return {"entities": [], "relations": [], "warning": "unreadable reply"}
+    ents = [e for e in data.get("entities") or [] if isinstance(e, dict) and e.get("name")]
+    rels = [r for r in data.get("relations") or [] if isinstance(r, dict) and r.get("source") and r.get("target")]
     return {"entities": ents, "relations": rels}
 
 
@@ -168,9 +168,9 @@ def summarize_community(comm, ebyid, relations, meter):
              if r["s"] in members and r["t"] in members][:60]
     user = "Entities:\n" + "\n".join(lines) + "\n\nRelationships:\n" + ("\n".join(facts) or "- (none)")
     try:
-        data = llm.complete_json(SUMMARY_SYSTEM, user, task="summarize", max_tokens=500, meter=meter)
+        data = llm.complete_json(SUMMARY_SYSTEM, user, task="summarize", max_tokens=800, meter=meter)
         return str(data.get("title", "Cluster"))[:40], str(data.get("summary", ""))
-    except ValueError:
+    except (ValueError, AttributeError):
         return "Cluster", ""
 
 

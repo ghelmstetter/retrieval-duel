@@ -45,6 +45,13 @@ FAKE_LLM = os.getenv("RDUEL_FAKE_LLM", "") == "1"
 
 PORT = int(os.getenv("RDUEL_PORT", "8000"))
 
+# Hosted public demo (e.g. Vercel): only the bundled demo, no uploads or indexing, and never
+# calls Claude, even if a key is set, so strangers can't run up a bill.
+PUBLIC_DEMO = os.getenv("RDUEL_PUBLIC_DEMO", "") == "1"
+REPO_URL = "https://github.com/ghelmstetter/retrieval-duel"
+
 
 def has_key() -> bool:
+    if PUBLIC_DEMO:
+        return False
     return bool(ANTHROPIC_API_KEY) or FAKE_LLM

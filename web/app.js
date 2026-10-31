@@ -10,6 +10,9 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 
 const state={catalog:[],pending:null,status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
 
+const voteKey=()=>'rd-votes-'+state.ds;
+function localVotes(){ try{ return JSON.parse(localStorage.getItem(voteKey())||'{}'); }catch(e){ return {}; } }
+function saveLocalVotes(v){ try{ localStorage.setItem(voteKey(),JSON.stringify(v)); }catch(e){} }
 async function api(path,opts={}){
   const res=await fetch(path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});
   let data={}; try{ data=await res.json(); }catch(e){}
@@ -49,13 +52,13 @@ function renderDatasets(){
       <span class="tag">${sel?'Selected':(d.demo?'Demo':(d.catalog?'Public dataset':'Your data'))}</span><h3>${esc(d.name)}</h3><p>${esc(d.description||'')}</p>
       <span class="st ${d.status}">${st}</span>${d.demo?'':`<button class="del" data-del="${d.slug}" title="Delete this dataset">Delete</button>`}</div>`;}).join('');
   const catCards=state.catalog.filter(c=>!c.imported).map(c=>`<div class="ds cat${state.pending===c.id?' on':''}" role="button" tabindex="0" data-cat="${c.id}">
-      <span class="tag">${state.pending===c.id?'Selected · not downloaded yet':'Public dataset · import'}</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="st">${esc(c.source)}</span></div>`).join('');
+      <span class="tag">${state.pending===c.id?(state.status.public?'Selected · runs locally':'Selected · not downloaded yet'):(state.status.public?'Public dataset · local version':'Public dataset · import')}</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="st">${esc(c.source)}</span></div>`).join('');
   $('#datasets').innerHTML=cards+catCards+`<button class="ds add${state.pending==='upload'?' on':''}" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
   document.querySelectorAll('.ds[data-slug]').forEach(c=>{ const pick=()=>selectDataset(c.dataset.slug); c.onclick=e=>{ if(!e.target.dataset.del) pick(); }; c.onkeydown=e=>{ if(e.key==='Enter') pick(); }; });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{ e.stopPropagation();
     if(b.dataset.confirm!=='1'){ b.dataset.confirm='1'; b.textContent='Really delete?'; return; }
     try{ await api('/api/datasets/'+b.dataset.del,{method:'DELETE'}); if(state.ds===b.dataset.del){ state.ds=null; state.data=null; } await refreshDatasets(); if(!state.ds && state.datasets[0]) selectDataset(state.datasets[0].slug); }catch(err){ alertBox(err.message); } });
-  $('#addDs').onclick=()=>{ preview('upload'); $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
+  $('#addDs').onclick=()=>{ if(state.status.public){ showLocalOnly('upload','Your own documents'); return; } preview('upload'); $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
   document.querySelectorAll('.ds[data-cat]').forEach(c=>{ const open=()=>openImport(c.dataset.cat); c.onclick=open; c.onkeydown=e=>{ if(e.key==='Enter') open(); }; });
 }
 function alertBox(msg){ showError('#estimate',msg); }
@@ -64,8 +67,10 @@ function preview(what){
   state.pending=what; renderDatasets();
   ['#cta','#stage'].forEach(s=>$(s).hidden=true); document.querySelector('.peek').hidden=true;
 }
+function showLocalOnly(id,name){ preview(id); $('#importBox').hidden=true; $('#uploadBox').hidden=true; $('#loName').textContent=name; $('#localOnly').hidden=false; }
+$('#loCancel').onclick=()=>{ endPreview(); renderDatasets(); };
 function endPreview(){
-  state.pending=null; $('#importBox').hidden=true; $('#uploadBox').hidden=true;
+  state.pending=null; $('#importBox').hidden=true; $('#uploadBox').hidden=true; $('#localOnly').hidden=true;
   $('#cta').hidden=false; $('#stage').hidden=false; document.querySelector('.peek').hidden=false;
 }
 async function selectDataset(slug){
@@ -156,6 +161,7 @@ async function pollJob(id){
 let impId=null;
 function openImport(id){
   const c=state.catalog.find(x=>x.id===id); if(!c) return; impId=id;
+  if(state.status.public){ showLocalOnly(id,c.name); return; }
   preview(id); $('#uploadBox').hidden=true; $('#importBox').hidden=false;
   $('#impSource').textContent=c.source+' · license: '+c.license; $('#impName').textContent=c.name;
   $('#impDesc').textContent=c.description; $('#impWhy').textContent=c.why;
@@ -230,7 +236,7 @@ async function loadViz(){
   if(run!==state.run) return;
   state.data=data;
   const q=await api(`/api/datasets/${state.ds}/questions`); state.questions=q.questions; state.types=q.types;
-  state.votes=await api(`/api/datasets/${state.ds}/votes`);
+  state.votes=state.status.public?localVotes():await api(`/api/datasets/${state.ds}/votes`);
   buildViz(data);
 }
 function buildViz(data){
@@ -489,7 +495,8 @@ function fillAnswers(item,r,run){
 document.querySelectorAll('#votes button').forEach(b=>b.onclick=async ()=>{
   const it=state.current, r=state.last; if(!it||!r) return;
   const grades={vector:(r.vector.grade||{}).grade,graph:(r.graph.grade||{}).grade,hybrid:(r.hybrid.grade||{}).grade};
-  try{ state.votes=await api(`/api/datasets/${state.ds}/votes`,{method:'POST',body:{qid:it.id,question:it.q,vote:b.dataset.v,grades}}); }catch(e){}
+  if(state.status.public){ state.votes[it.id||it.q]={q:it.q,vote:b.dataset.v,grades,t:Date.now()}; saveLocalVotes(state.votes); }
+  else { try{ state.votes=await api(`/api/datasets/${state.ds}/votes`,{method:'POST',body:{qid:it.id,question:it.q,vote:b.dataset.v,grades}}); }catch(e){} }
   document.querySelectorAll('#votes button').forEach(x=>x.setAttribute('aria-pressed',x===b));
   renderDeck(); showLesson(); updateScore();
 });
@@ -531,7 +538,7 @@ function renderDebrief(){
       <td>${vv?`<span class="pill ${vv.vote==='neither'?'tie':vv.vote}">${WIN_LABEL[vv.vote]}</span>`:'<span style="color:var(--faint)">not tried</span>'}</td>
       <td>${s.expect?`<span class="pill ${s.expect}">${WIN_LABEL[s.expect]}</span>`:''}</td><td class="q">${esc(s.rule||t.rule||'')}</td></tr>`; }).join('')}</tbody>`;
 }
-$('#resetVotes').onclick=async ()=>{ await api(`/api/datasets/${state.ds}/votes`,{method:'DELETE'}); state.votes={}; renderDebrief(); renderDeck(); };
+$('#resetVotes').onclick=async ()=>{ if(state.status.public) saveLocalVotes({}); else await api(`/api/datasets/${state.ds}/votes`,{method:'DELETE'}); state.votes={}; renderDebrief(); renderDeck(); };
 
 // ---------------- basics walkthrough ----------------
 const dot=(x,y,cls,delay)=>`<circle cx="${x}" cy="${y}" r="7" fill="#3fd6c8" fill-opacity=".5" class="${cls||''}" style="animation-delay:${delay||0}s"/>`;
@@ -689,6 +696,7 @@ document.addEventListener('keydown',e=>{
   try{ state.status=await api('/api/status'); }catch(e){ state.status={}; }
   const chip=$('#liveChip');
   if(state.status.has_key){ chip.textContent=state.status.fake?'Test mode · stand-in AI':'Live · Claude'; chip.classList.add('live'); chip.title=`Answers by ${state.status.answer_model}; extraction by ${state.status.work_model}`; }
+  else if(state.status.public){ chip.textContent='Hosted demo · pre-written answers'; chip.title='Run it on your computer for live answers and your own data'; }
   else { chip.textContent='Demo mode · no API key'; chip.title='Add ANTHROPIC_API_KEY to .env for live answers and your own datasets'; }
   await refreshDatasets();
   let pick=null; try{ pick=localStorage.getItem('rd-ds'); }catch(e){}

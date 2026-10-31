@@ -14,6 +14,16 @@ It's built for learning, not production. Everything is small, visible and explai
 
 The demo dataset, **The Larkspur Gazette**, is 17 short articles about a fictional harbor town, so the AI can't answer from its training data. Its graph is prebuilt and its sample answers are pre-written, so it works with no API key.
 
+## Hosting the demo on Vercel
+
+The repo includes `vercel.json` and `api/index.py`, so you can host a public, keyless demo on Vercel's free Hobby plan:
+
+1. At [vercel.com](https://vercel.com), choose **Add New → Project** and import this GitHub repo.
+2. Framework Preset: **Other**. Root Directory: `./`. Leave the build settings empty.
+3. Deploy. No environment variables are needed.
+
+The hosted version runs in **public demo mode**: only the Larkspur Gazette, with pre-written answers; uploads, imports and indexing are switched off; votes stay in each visitor's browser; and it never calls Claude, even if you add a key, so strangers can't run up a bill. Retrieval still runs live, so visitors can type their own questions and watch both searches work. The import and upload cards point visitors to this repo to run the full version locally.
+
 ## Quick start (Windows)
 
 1. Install **Python 3.10 or newer** from [python.org](https://www.python.org/downloads/). During setup, tick **"Add python.exe to PATH."**
@@ -89,9 +99,15 @@ rduel/            Python package
 web/              the page (HTML, CSS, JS with D3 for the visuals)
 demo/larkspur/    the demo dataset with its prebuilt graph
 run.bat           one-click setup and start for Windows
-tests/            offline tests (python -m tests.test_catalog)
+api/index.py      Vercel entry point (public demo mode)
+vercel.json       Vercel configuration
+tests/            offline tests (python -m tests.test_catalog, python -m tests.test_llm_json)
 ```
 
 ## Ideas for later
 
 A reranker, keyword (BM25) search as a fourth contestant, agentic retrieval, and side-by-side runs of Microsoft GraphRAG or LightRAG on the same corpus.
+
+## License
+
+[MIT](LICENSE) © 2026 Greg Helmstetter. You're free to use, change, and share this code, including commercially, as long as the copyright notice stays with it. D3.js is included under its ISC license. Imported datasets aren't part of this repository and keep their own licenses (see [LICENSE](LICENSE)).

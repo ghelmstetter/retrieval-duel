@@ -213,6 +213,7 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
 .cta-how{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .cta-how p{margin:4px 0 0;color:#cfd8e8;font-size:14.5px;max-width:52ch}
 .cta-go{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+a.btn{text-decoration:none;display:inline-block}
 .btn.big{font-size:16px;padding:14px 22px;border-radius:12px;background:var(--query);color:#1a0a12;box-shadow:0 0 28px rgba(255,95,143,.35)}
 .btn.big:not(.ghost):not(:disabled){animation:ctaPulse 1.8s ease-in-out infinite}
 @keyframes ctaPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,95,143,.55),0 0 28px rgba(255,95,143,.35);transform:scale(1)}50%{box-shadow:0 0 0 12px rgba(255,95,143,0),0 0 40px rgba(255,95,143,.55);transform:scale(1.03)}}
@@ -276,6 +277,10 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
 .proto.live{color:var(--ok);border-color:rgba(107,227,139,.5)}
 .pill.partial{color:var(--graph);border-color:var(--graph)} .pill.unknown{color:var(--faint);border-color:var(--faint)}
 @media (max-width:820px){ .ufields{grid-template-columns:1fr} }
+.site-foot{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 40px;border-top:1px solid var(--line);color:var(--muted);font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.site-foot p{margin:0;max-width:90ch}
+.site-foot a{color:var(--vec)}
+.site-foot .fine{font-size:12px;color:var(--faint)}
 .cap{padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.45}
 .cap b{color:var(--fg);font-weight:600}
 /* slide animations, replayed each time a slide opens */
@@ -345,6 +350,12 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
     <p class="cta-note">Your files are stored on this computer. When you index them, their text is sent to Claude to build the knowledge graph.</p>
     <div class="row"><button class="btn big" type="submit" id="upGo">Add dataset</button><button class="btn ghost" type="button" id="upCancel">Cancel</button><span class="cta-note" id="upMsg"></span></div>
   </form>
+  <div class="upload" id="localOnly" hidden>
+    <span class="eyebrow">Runs on your computer</span>
+    <h3 id="loName"></h3>
+    <p class="cta-note" style="color:#cfd8e8">This hosted demo only runs the Larkspur Gazette, with pre-written answers. To import public datasets, index your own files, and get live answers from Claude, run Retrieval Duel on your computer. It's free and open source; you only pay for your own Claude usage.</p>
+    <div class="row"><a class="btn big" id="loLink" target="_blank" rel="noopener" href="https://github.com/ghelmstetter/retrieval-duel">Get it on GitHub →</a><button class="btn ghost" type="button" id="loCancel">Back to the demo</button></div>
+  </div>
   <div class="upload" id="importBox" hidden>
     <span class="eyebrow" id="impSource"></span>
     <h3 id="impName"></h3>
@@ -509,6 +520,11 @@ details.ev summary{cursor:pointer;font-family:var(--mono);font-size:11.5px;color
   <div class="row"><button class="btn ghost" id="resetVotes">Clear my votes</button><button class="btn big" data-goto="duel">Back to the duel →</button></div>
 </section>
 </div>
+
+<footer class="site-foot">
+  <p>Retrieval Duel is open source under the MIT license. <a href="https://github.com/ghelmstetter/retrieval-duel" target="_blank" rel="noopener">View it on GitHub</a>.</p>
+  <p class="fine">The Larkspur Gazette is fictional. Imported datasets keep their own licenses: MultiHop-RAG (ODC-By), GraphRAG-Bench (see its dataset card), the Enron corpus (public record). Visuals use D3.js (ISC license). Answers are written by Claude via the Anthropic API; this project isn't affiliated with Anthropic or the dataset authors. Cost figures are estimates.</p>
+</footer>
 
 <div class="tip" id="tip" hidden></div>
 

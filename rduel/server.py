@@ -27,6 +27,8 @@ def guarded(fn):
             return await fn(request)
         except (ValueError, FileNotFoundError) as e:
             return fail(str(e))
+        except PermissionError as e:
+            return fail(str(e), 403)
         except Exception as e:  # show the real reason in the page
             import traceback
             traceback.print_exc()
@@ -35,6 +37,15 @@ def guarded(fn):
                 msg = "Claude rejected the API key. Check ANTHROPIC_API_KEY in your .env file."
             return fail(msg, 500)
     return wrapper
+
+
+LOCAL_ONLY = ("The hosted demo only runs the Larkspur Gazette. To import public datasets or your own files, "
+              "run Retrieval Duel on your computer: " + config.REPO_URL)
+
+
+def _local_only():
+    if config.PUBLIC_DEMO:
+        raise PermissionError(LOCAL_ONLY)
 
 
 def _ds(request):
@@ -51,13 +62,14 @@ async def index(request):
 
 @guarded
 async def status(request):
-    return ok({"has_key": config.has_key(), "fake": config.FAKE_LLM, "work_model": config.WORK_MODEL,
+    return ok({"has_key": config.has_key(), "fake": config.FAKE_LLM, "public": config.PUBLIC_DEMO, "repo": config.REPO_URL, "work_model": config.WORK_MODEL,
                "answer_model": config.ANSWER_MODEL, "top_k": config.TOP_K, "hops": config.GRAPH_HOPS})
 
 
 @guarded
 async def datasets(request):
     if request.method == "POST":
+        _local_only()
         body = await request.json()
         out = await run_in_threadpool(pipeline.create_dataset, body.get("name", "My dataset"), body.get("description", ""),
                                       body.get("files", []), int(body.get("chunk_words", 120)))
@@ -68,6 +80,7 @@ async def datasets(request):
 @guarded
 async def catalog(request):
     if request.method == "POST":
+        _local_only()
         b = await request.json()
         job = pipeline.start_import(b.get("id"), b.get("size"))
         return ok({k: v for k, v in job.items() if k != "events"})
@@ -78,6 +91,7 @@ async def catalog(request):
 async def dataset(request):
     ds = _ds(request)
     if request.method == "DELETE":
+        _local_only()
         pipeline.delete_dataset(ds.slug)
         return ok({"deleted": ds.slug})
     return ok(ds.summary())
@@ -90,6 +104,7 @@ async def estimate(request):
 
 @guarded
 async def start_index(request):
+    _local_only()
     job = pipeline.start_index(_ds(request).slug)
     return ok({k: v for k, v in job.items() if k != "events"})
 
@@ -161,6 +176,8 @@ async def ask(request):
 @guarded
 async def votes(request):
     ds = _ds(request)
+    if config.PUBLIC_DEMO:  # votes stay in each visitor's browser
+        return ok({})
     if request.method == "POST":
         b = await request.json()
         return ok(pipeline.record_vote(ds.slug, b.get("qid"), b.get("question", ""), b.get("vote"), b.get("grades")))
