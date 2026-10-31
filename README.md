@@ -4,7 +4,7 @@
 
 It's built for learning, not production. Everything is small, visible and explained.
 
-![Retrieval Duel: vector RAG and GraphRAG searching the same documents side by side, with the passages each one retrieved and a third Hybrid answer](docs/images/duel.png)
+![Retrieval Duel: vector RAG and GraphRAG searching the same documents side by side, with the passages each one retrieved and a third Hybrid answer](docs/images/duel.jpg)
 
 ## What's inside
 
@@ -13,6 +13,8 @@ It's built for learning, not production. Everything is small, visible and explai
 3. **Profile**: what kind of corpus this is, and what that predicts (how connected it is, how many details survive extraction, what indexing cost).
 4. **Duel**: ask a question. Vector RAG, GraphRAG and a Hybrid router all answer, with animated retrieval on a 2D map of passages and on the knowledge graph.
 5. **Debrief**: your results by question type, plus a guide to when to use which.
+
+![The Load step: the Larkspur Gazette demo, one-click public datasets, and your own uploads, with a cost estimate before indexing](docs/images/load.jpg)
 
 The demo dataset, **The Larkspur Gazette**, is 17 short articles about a fictional harbor town, so the AI can't answer from its training data. Its graph is prebuilt and its sample answers are pre-written, so it works with no API key.
 
