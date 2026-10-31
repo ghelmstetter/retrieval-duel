@@ -8,7 +8,7 @@ const WIN_LABEL={vector:'Vector',graph:'Graph',tie:'Tie',neither:'Both wrong'};
 const ROUTE_LABEL={vector:'vector search only',graph:'the graph only',both:'both, merged'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const state={catalog:[],status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
+const state={catalog:[],pending:null,status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
 
 async function api(path,opts={}){
   const res=await fetch(path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});
@@ -27,7 +27,8 @@ function go(step){
   if(['profile','duel','debrief'].includes(step) && !state.shown){ showIndexedNow(); }
   STEPS.forEach(s=>{ $('#step-'+s).hidden=s!==step; });
   document.querySelectorAll('nav.steps button').forEach(b=>b.setAttribute('aria-current',b.dataset.step===step?'step':'false'));
-  $('#stage').hidden = step==='debrief'||step==='basics';
+  if(step!=='load' && state.pending){ endPreview(); renderDatasets(); }
+  $('#stage').hidden = step==='debrief'||step==='basics'||(step==='load'&&!!state.pending);
   $('#duelResults').hidden = !(step==='duel' && state.last);
   if(step==='profile') renderProfile();
   if(step==='duel') renderDeck();
@@ -43,22 +44,32 @@ async function refreshDatasets(){ state.datasets=await api('/api/datasets'); try
 function renderDatasets(){
   const cards=state.datasets.map(d=>{
     const st=d.demo?'demo · prebuilt':(d.status==='ready'?`indexed · ${d.stats?d.stats.entities+' entities':''}`:d.status==='indexing'?'indexing…':d.status==='error'?'indexing failed':'not indexed yet');
-    return `<div class="ds${d.slug===state.ds?' on':''}" role="button" tabindex="0" data-slug="${d.slug}">
-      <span class="tag">${d.slug===state.ds?'Selected':(d.demo?'Demo':(d.catalog?'Public dataset':'Your data'))}</span><h3>${esc(d.name)}</h3><p>${esc(d.description||'')}</p>
+    const sel=!state.pending&&d.slug===state.ds;
+    return `<div class="ds${sel?' on':''}" role="button" tabindex="0" data-slug="${d.slug}">
+      <span class="tag">${sel?'Selected':(d.demo?'Demo':(d.catalog?'Public dataset':'Your data'))}</span><h3>${esc(d.name)}</h3><p>${esc(d.description||'')}</p>
       <span class="st ${d.status}">${st}</span>${d.demo?'':`<button class="del" data-del="${d.slug}" title="Delete this dataset">Delete</button>`}</div>`;}).join('');
-  const catCards=state.catalog.filter(c=>!c.imported).map(c=>`<div class="ds cat" role="button" tabindex="0" data-cat="${c.id}">
-      <span class="tag">Public dataset · import</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="st">${esc(c.source)}</span></div>`).join('');
-  $('#datasets').innerHTML=cards+catCards+`<button class="ds add" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
+  const catCards=state.catalog.filter(c=>!c.imported).map(c=>`<div class="ds cat${state.pending===c.id?' on':''}" role="button" tabindex="0" data-cat="${c.id}">
+      <span class="tag">${state.pending===c.id?'Selected · not downloaded yet':'Public dataset · import'}</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="st">${esc(c.source)}</span></div>`).join('');
+  $('#datasets').innerHTML=cards+catCards+`<button class="ds add${state.pending==='upload'?' on':''}" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
   document.querySelectorAll('.ds[data-slug]').forEach(c=>{ const pick=()=>selectDataset(c.dataset.slug); c.onclick=e=>{ if(!e.target.dataset.del) pick(); }; c.onkeydown=e=>{ if(e.key==='Enter') pick(); }; });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{ e.stopPropagation();
     if(b.dataset.confirm!=='1'){ b.dataset.confirm='1'; b.textContent='Really delete?'; return; }
     try{ await api('/api/datasets/'+b.dataset.del,{method:'DELETE'}); if(state.ds===b.dataset.del){ state.ds=null; state.data=null; } await refreshDatasets(); if(!state.ds && state.datasets[0]) selectDataset(state.datasets[0].slug); }catch(err){ alertBox(err.message); } });
-  $('#addDs').onclick=()=>{ $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
+  $('#addDs').onclick=()=>{ preview('upload'); $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
   document.querySelectorAll('.ds[data-cat]').forEach(c=>{ const open=()=>openImport(c.dataset.cat); c.onclick=open; c.onkeydown=e=>{ if(e.key==='Enter') open(); }; });
 }
 function alertBox(msg){ showError('#estimate',msg); }
 
+function preview(what){
+  state.pending=what; renderDatasets();
+  ['#cta','#stage'].forEach(s=>$(s).hidden=true); document.querySelector('.peek').hidden=true;
+}
+function endPreview(){
+  state.pending=null; $('#importBox').hidden=true; $('#uploadBox').hidden=true;
+  $('#cta').hidden=false; $('#stage').hidden=false; document.querySelector('.peek').hidden=false;
+}
 async function selectDataset(slug){
+  endPreview();
   state.ds=slug; state.data=null; state.shown=false; state.last=null; state.current=null; state.run++;
   try{ localStorage.setItem('rd-ds',slug); }catch(e){}
   renderDatasets(); clearViz();
@@ -145,14 +156,14 @@ async function pollJob(id){
 let impId=null;
 function openImport(id){
   const c=state.catalog.find(x=>x.id===id); if(!c) return; impId=id;
-  $('#uploadBox').hidden=true; $('#importBox').hidden=false;
+  preview(id); $('#uploadBox').hidden=true; $('#importBox').hidden=false;
   $('#impSource').textContent=c.source+' · license: '+c.license; $('#impName').textContent=c.name;
   $('#impDesc').textContent=c.description; $('#impWhy').textContent=c.why;
   $('#impSize').innerHTML=c.sizes.map(s=>`<option value="${s.id}"${s.id===c.default?' selected':''}>${esc(s.label)}</option>`).join('');
   $('#impMsg').textContent=''; $('#impGo').disabled=false;
   $('#importBox').scrollIntoView({behavior:REDUCED?'auto':'smooth',block:'nearest'});
 }
-$('#impCancel').onclick=()=>{ $('#importBox').hidden=true; };
+$('#impCancel').onclick=()=>{ endPreview(); renderDatasets(); };
 $('#impGo').onclick=async ()=>{
   $('#impGo').disabled=true; $('#impMsg').textContent='Starting download…';
   try{
@@ -174,7 +185,7 @@ $('#upFiles').onchange=e=>setFiles(e.target.files);
 const drop=$('#drop');
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');}; drop.ondragleave=()=>drop.classList.remove('over');
 drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');setFiles(e.dataTransfer.files);};
-$('#upCancel').onclick=()=>{ $('#uploadBox').hidden=true; };
+$('#upCancel').onclick=()=>{ endPreview(); renderDatasets(); };
 $('#uploadBox').onsubmit=async e=>{
   e.preventDefault();
   if(!upFiles.length){ $('#upMsg').textContent='Choose at least one file.'; return; }
