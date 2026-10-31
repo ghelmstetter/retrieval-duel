@@ -8,7 +8,7 @@ const WIN_LABEL={vector:'Vector',graph:'Graph',tie:'Tie',neither:'Both wrong'};
 const ROUTE_LABEL={vector:'vector search only',graph:'the graph only',both:'both, merged'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const state={catalog:[],pending:null,status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
+const state={catalog:[],pending:null,seen:new Set(),status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
 
 const voteKey=()=>'rd-votes-'+state.ds;
 function localVotes(){ try{ return JSON.parse(localStorage.getItem(voteKey())||'{}'); }catch(e){ return {}; } }
@@ -74,6 +74,8 @@ function endPreview(){
   $('#cta').hidden=false; $('#stage').hidden=false; document.querySelector('.peek').hidden=false;
 }
 async function selectDataset(slug){
+  // Coming back to the dataset that's already loaded (e.g. after peeking at another card): keep everything.
+  if(slug===state.ds && state.data){ endPreview(); renderDatasets(); if(state.shown) setCta('done'); return; }
   endPreview();
   state.ds=slug; state.data=null; state.shown=false; state.last=null; state.current=null; state.run++;
   try{ localStorage.setItem('rd-ds',slug); }catch(e){}
@@ -84,7 +86,8 @@ async function selectDataset(slug){
   loadDocs();
   if(m.demo || m.status==='ready'){
     await loadViz();
-    setCta('idle');
+    // Show the "build it" moment the first time only; after that (or for datasets you indexed yourself) show it ready.
+    if(state.seen.has(slug) || (!m.demo && m.status==='ready')) showIndexedNow(); else setCta('idle');
   } else if(m.status==='indexing' && state.job){
     setCta('running'); pollJob(state.job);
   } else {
@@ -114,11 +117,11 @@ function renderEstimate(e){
 }
 function setCta(s){
   const m=curMeta(); state.cta=s;
-  $('#vecEmpty').hidden=$('#grEmpty').hidden= !(s==='idle'||s==='new'||s==='running'||s==='error');
-  $('#indexBtn').hidden= s==='done';
+  $('#vecEmpty').hidden=$('#grEmpty').hidden= !(s==='idle'||s==='new'||s==='error'||(s==='running'&&!state.data));
+  $('#indexBtn').hidden= s==='done' && !(m.demo||m.status==='ready');
   $('#indexBtn').disabled= s==='running' || (s==='new' && !state.status.has_key);
-  $('#indexBtn').classList.remove('ghost');
-  $('#indexBtn').textContent= s==='running'?'Indexing…':(s==='error'?'Try indexing again':`Index ${m.name||'dataset'}`);
+  $('#indexBtn').classList.toggle('ghost', s==='done');
+  $('#indexBtn').textContent= s==='done'?'Replay indexing':s==='running'?'Indexing…':(s==='error'?'Try indexing again':`Index ${m.name||'dataset'}`);
   $('#toProfile').hidden= s!=='done';
   const notes={
     idle: m.demo?'Takes about 8 seconds. The demo\'s graph was built ahead of time; this replays how it happens, step by step, in the two panels below.':'Already indexed. Click to watch the indexes being assembled in the panels below.',
@@ -299,7 +302,7 @@ function resting(){
   G.hullSel.interrupt().attr('fill-opacity',.07).attr('stroke-opacity',.35); G.hullTxt.interrupt().attr('opacity',.85);
   V.qG.selectAll('*').remove(); V.lineG.selectAll('*').remove(); V.labG.selectAll('*').remove(); G.ringG.selectAll('*').remove(); G.edgeLabG.selectAll('*').remove();
 }
-function showIndexedNow(){ if(!state.data) return; resting(); state.shown=true; setCta('done'); logDone(); $('#vecOverlay').innerHTML=''; $('#grOverlay').innerHTML=''; }
+function showIndexedNow(){ if(!state.data) return; resting(); state.shown=true; state.seen.add(state.ds); setCta('done'); logDone(); $('#vecOverlay').innerHTML=''; $('#grOverlay').innerHTML=''; }
 function logDone(){ const s=state.data.stats||{}; $('#log').hidden=false;
   $('#log').innerHTML=`<span>passages <b>${s.chunks}</b></span><span>entities <b>${s.entities}</b></span><span>relations <b>${s.relations}</b></span><span>communities <b>${s.communities}</b></span><span class="live">Both indexes ready.</span>`; }
 
