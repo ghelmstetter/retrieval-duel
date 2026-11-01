@@ -119,6 +119,24 @@ class ScriptedPlanner:
 
 
 # ---------------- the loop ----------------
+def _clean(action):
+    """Normalize a planned action: entities as a list of names, query as text."""
+    if not isinstance(action, dict):
+        return None
+    tool = action.get("tool")
+    if tool not in ("vector", "graph", "summaries"):
+        return None
+    out = {"tool": tool}
+    if tool == "vector":
+        q = action.get("query")
+        out["query"] = q if isinstance(q, str) else " ".join(map(str, q)) if isinstance(q, list) else ""
+    if tool == "graph":
+        ents = action.get("entities") or action.get("entity") or []
+        out["entities"] = [ents] if isinstance(ents, str) else [str(e) for e in ents if e]
+    return out
+
+
+
 def _describe(action):
     if action["tool"] == "vector":
         return f'vector search for "{action.get("query", "")}"'
@@ -185,16 +203,17 @@ def run(question, vindex, gi, *, planner, top_k=None, answer=True, meter=None):
 
     before = mark()
     plan = planner.plan(question)
+    rewritten = str(plan.get("rewritten") or question)
     step("plan", plan.get("why") or "Planned the searches.", before,
-         {"rewritten": plan["rewritten"] if plan["rewritten"].strip().lower() != question.strip().lower() else None,
-          "planned": [_describe(a) for a in plan["actions"]]})
+         {"rewritten": rewritten if rewritten.strip().lower() != question.strip().lower() else None,
+          "planned": [_describe(a) for a in map(_clean, plan["actions"]) if a]})
 
-    for a in plan["actions"][:MAX_SEARCHES]:
+    for a in [c for c in map(_clean, plan["actions"]) if c][:MAX_SEARCHES]:
         do(a)
     while len(done) < MAX_SEARCHES:
         before = mark()
         c = planner.check(question, evidence_text(), done)
-        nxt = c.get("next")
+        nxt = _clean(c.get("next"))
         if nxt and _describe(nxt) in done:
             nxt = None
         step("check", c.get("note") or ("Enough to answer." if c.get("enough") or not nxt else "Not enough yet."), before,

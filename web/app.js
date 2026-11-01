@@ -397,6 +397,8 @@ const when=t=>{ try{ return new Date(t*1000).toLocaleString([], {month:'short',d
 function showSavedBar(r){
   const bar=$('#savedBar'), key=state.current&&!state.current.custom?state.current.id:'q:'+state.current.q.trim().toLowerCase();
   if(r.just_saved){ state.saved[key]=Date.now()/1000; renderDeck(); }
+  if(r.not_saved){ bar.hidden=false; bar.classList.add('warn'); $('#savedMsg').innerHTML=`<b>Not saved.</b> ${esc(r.not_saved.replace(/^Not saved, because /,'Because '))}`; $('#rerunBtn').textContent='Run again'; return; }
+  bar.classList.remove('warn');
   if(!r.saved_at && !r.just_saved){ bar.hidden=true; return; }
   const cost=(r.meter&&r.meter.dollars)||0;
   bar.hidden=false;
@@ -437,7 +439,8 @@ async function ask(item,fresh=false){
   const run=++state.run;
   if(!REDUCED) $('#stage').scrollIntoView({behavior:'smooth',block:'start'});
   let r; try{ r=await api(`/api/datasets/${state.ds}/ask`,{method:'POST',body:{question:item.q,sample_id:item.custom?null:item.id,fresh}}); }
-  catch(e){ clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true; if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message); } return; }
+  catch(e){ clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true; if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message);
+    const bar=$('#savedBar'); bar.hidden=false; bar.classList.add('warn'); $('#savedMsg').innerHTML=`<b>This question failed.</b> ${esc(e.message)}`; $('#rerunBtn').textContent='Try again'; } return; }
   if(run!==state.run) return;
   clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true;
   state.last=r;
@@ -535,12 +538,13 @@ function fillAnswers(item,r,run){
     :who==='graph'?(g.mode==='global'?'This looked like a big-picture question, so GraphRAG would answer from the community summaries below.':(g.seeds.length?'With an API key, Claude would write this answer from the facts below, gathered by walking out from the entities your question named.':'Your question named nothing the graph knows about, so GraphRAG has nothing to work with. Try including a person, place or organization.'))
     :'With an API key, Claude would answer from the evidence the router picked.';
   const gd=D();
-  typeText($('#vecText'),v.answer||noAns('vector'),run,1300*gd);
-  typeText($('#grText'),g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd);
-  typeText($('#hyText'),hy.answer||noAns('hybrid'),run,2100*gd);
+  const failMsg=x=>x.error?`This one failed: ${x.error}`:null;
+  typeText($('#vecText'),failMsg(v)||v.answer||noAns('vector'),run,1300*gd);
+  typeText($('#grText'),failMsg(g)||g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd);
+  typeText($('#hyText'),failMsg(hy)||hy.answer||noAns('hybrid'),run,2100*gd);
   renderAgentSteps(ag,r,run);
   const agNo=ag.planner==='rules'?'Without an API key the agent follows simple rules instead of thinking, and can\'t write an answer. Its searches are shown below.':'With an API key, Claude would write this answer from everything the agent gathered.';
-  typeText($('#agText'),ag.answer||agNo,run,(2400+ag.steps.length*450)*gd);
+  typeText($('#agText'),failMsg(ag)||ag.answer||agNo,run,(2400+ag.steps.length*450)*gd);
   if(!r.live && !r.canned) $('#hyNote').textContent+=' Live answers need an API key.';
   $('#footnote').textContent=r.live?`Retrieval ran on your computer. Answers were written live by ${state.status.answer_model}${r.vector.grade?', and graded against the reference answer by '+state.status.work_model:''}. Latency is measured; this question cost about $${(r.meter.dollars||0).toFixed(4)}.`
     :(r.canned?'Demo mode: retrieval ran live, but these answers were pre-written from exactly the evidence shown. Add an API key for live answers. Latency figures are typical values, not measurements.'

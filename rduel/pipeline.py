@@ -458,25 +458,35 @@ def ask(slug, question, sample_id=None, fresh=False):
         }
         times = {}
 
+        errors = {}
+
         def run(name):
             s = time.time()
-            out = jobs[name]()
+            try:
+                out = jobs[name]()
+            except Exception as e:  # one failed contestant shouldn't sink the other three
+                traceback.print_exc()
+                errors[name] = friendly_error(e)
+                out = None
             times[name] = time.time() - s
             return name, out
 
         with ThreadPoolExecutor(max_workers=4) as ex:
             for name, out in ex.map(run, list(jobs)):
                 if name == "agent":
-                    result["agent"] = out
+                    result["agent"] = out or {"steps": [], "answer": None, "context_tokens": 0, "searches": 0,
+                                              "planner": "claude", "meter": {}, "latency": 0}
                 else:
                     result[name]["answer"] = out
+                if name in errors:
+                    result[name]["error"] = errors[name]
         for k in ("calls", "cached", "tokens_in", "tokens_out", "dollars"):  # count the agent's spending too
             setattr(meter, k, getattr(meter, k) + getattr(agent_meter, k))
         result["vector"]["latency"] = round(t_vec + times["vector"], 2)
         result["graph"]["latency"] = round(t_graph + times["graph"], 2)
         result["hybrid"]["latency"] = round(max(t_vec, t_graph) + times["hybrid"], 2)
         if sample and sample.get("answer"):
-            names = ["vector", "graph", "hybrid", "agent"]
+            names = [n for n in ["vector", "graph", "hybrid", "agent"] if result[n].get("answer")]
             with ThreadPoolExecutor(max_workers=4) as ex:
                 grades = list(ex.map(lambda n: qa.judge(question, sample["answer"], result[n]["answer"], meter), names))
             for n, gr in zip(names, grades):
@@ -505,12 +515,41 @@ def ask(slug, question, sample_id=None, fresh=False):
         result["estimated_latency"] = True
     result["meter"] = meter.as_dict()
     if live and not config.PUBLIC_DEMO:
-        with _LOCK:
-            saved = _read(results_path, {})
-            saved[key] = {"saved_at": time.time(), "result": result}
-            _write(results_path, saved)
-        result["just_saved"] = True
+        failed = [n for n in ("vector", "graph", "hybrid", "agent") if result[n].get("error")]
+        if failed:  # don't keep an incomplete result as the final word
+            label = {"vector": "Vector", "graph": "GraphRAG", "hybrid": "Hybrid", "agent": "Agentic"}
+            result["not_saved"] = "Not saved, because " + " and ".join(label[n] for n in failed) + \
+                f" failed: {result[failed[0]]['error']}" + ("" if "again" in result[failed[0]]["error"] else " Run it again to retry.")
+        else:
+            try:
+                with _LOCK:
+                    saved = _read(results_path, {})
+                    saved[key] = {"saved_at": time.time(), "result": result}
+                    _write(results_path, saved)
+                result["just_saved"] = True
+            except Exception as e:
+                traceback.print_exc()
+                result["not_saved"] = f"The answers are fine, but saving them failed: {e}"
     return result
+
+
+def friendly_error(e):
+    """Turn an exception from the Claude API (or elsewhere) into a sentence for the page."""
+    name, msg = e.__class__.__name__, str(e)
+    low = (name + " " + msg).lower()
+    if "overloaded" in low or "529" in msg:
+        return "Claude was busy (overloaded). Wait a minute and run it again."
+    if "ratelimit" in low or "rate_limit" in low or "429" in msg:
+        return "Hit the API rate limit. Wait a minute and run it again."
+    if "timeout" in low or "timed out" in low:
+        return "The request to Claude timed out. Run it again."
+    if "authentication" in low or "401" in msg:
+        return "Claude rejected the API key. Check ANTHROPIC_API_KEY in .env."
+    if "connection" in low:
+        return "Couldn't reach Claude. Check your internet connection and run it again."
+    if "budget" in low:
+        return msg
+    return f"{name}: {msg[:200]}"
 
 
 def _apply_path(gi, g, path):
