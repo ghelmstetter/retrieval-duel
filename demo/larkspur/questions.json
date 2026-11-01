@@ -281,7 +281,7 @@
   "answer": "Yes: residents packed a forum on rising tides, basements fill at king tides, and after Storm Ada residents feared worse storms.",
   "expect": "vector",
   "sources": [],
-  "lesson": "GraphRAG starts by finding named things in your question. \"Residents,\" \"anxious\" and \"water\" aren't entities, so it had no way in. Vector search needs no names. (Real embeddings would also match synonyms like \"flooding\"; this demo matches words, which is enough here.)",
+  "lesson": "GraphRAG starts by finding named things in your question. \"Residents,\" \"anxious\" and \"water\" aren't entities, so it had no way in. Vector search needs no names. (Meaning-based embeddings would also match synonyms like \"flooding\"; this demo matches words, which is enough here.)",
   "rule": "Vague or topical questions with no names favor vector RAG.",
   "canned": {
    "vector": "Yes. Residents packed a forum on rising tides at The Brass Kettle, and several said their basements now fill at every king tide. After Storm Ada, residents also worried the next storm would be worse.",
@@ -376,7 +376,7 @@
    "council",
    "mara"
   ],
-  "lesson": "This question came up in real testing, and every simple approach fails on it for a different reason. Vector search matched only the word \"town\" and pulled up passages about the ferry and the charter, because \"in charge\" and \"chair\" share no words. GraphRAG needs a name to start from, and \"the town\" isn't one. The simple Hybrid made a single routing decision (vector, since nothing was named) and answered from the wrong passages. The agent rewrote the question with words the articles might use (mayor, council, chair), found the article about Mara Quill's election, noticed it still couldn't rule out a mayor, and walked the graph from the Harbor Council to confirm. More steps and more cost, but the right answer.",
+  "lesson": "This question came up while testing the app, and every simple approach fails on it for a different reason. Vector search matched only the word \"town\" and pulled up passages about the ferry and the charter, because \"in charge\" and \"chair\" share no words. GraphRAG needs a name to start from, and \"the town\" isn't one. The simple Hybrid made a single routing decision (vector, since nothing was named) and answered from the wrong passages. The agent rewrote the question with words the articles might use (mayor, council, chair), found the article about Mara Quill's election, noticed it still couldn't rule out a mayor, and walked the graph from the Harbor Council to confirm. More steps and more cost, but the right answer.",
   "rule": "When the question's words don't match the documents' words, let an agent rewrite the question and search again.",
   "canned": {
    "vector": "The evidence doesn't say who is in charge of the town. It mentions Brandt Boatworks, which has built and maintained the town ferry since 1988, and Juno Reyes, who called the charter \"the oldest promise the town ever made,\" but neither is described as leading the town.",

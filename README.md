@@ -45,7 +45,7 @@ Then read the **[user guide](docs/USER-GUIDE.md)** for a walkthrough of every st
 python -m venv .venv
 # Windows: .venv\Scripts\activate     Mac/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-pip install fastembed        # optional but recommended: real meaning-based embeddings
+pip install fastembed        # optional but recommended: meaning-based embeddings
 cp .env.example .env         # Windows: copy .env.example .env   then add your key
 python -m rduel
 ```
@@ -83,7 +83,7 @@ Choose small, medium or large. Nothing is sent to Claude until you click Index, 
 
 **Agentic** works in a loop instead of one shot: Claude rewrites the question into the words the documents are likely to use, picks one or two searches (vector, a graph walk from entities it names, or the community summaries), checks whether the evidence is enough, and if not chooses a follow-up search, up to three in total. Then it answers from everything it gathered. Its card shows every step with its token cost. Without an API key it can't think, so it falls back to simple rules; in the demo, each sample question has a pre-written plan whose searches still run live.
 
-**Case study: "Who is in charge of the town?"** The Larkspur demo includes this question because it came up in real testing and every one-shot approach fails on it, each for a different reason. Vector search matches only "town" (the article says "chair" and "council"), GraphRAG has no name to start from, and the simple Hybrid routes to vector search and answers from the wrong passages. The agent rewrites the question, finds Mara Quill's election as council chair, notices it can't yet rule out a mayor, and walks the graph from the Harbor Council to confirm.
+**Case study: "Who is in charge of the town?"** The Larkspur demo includes this question because it came up while testing the app and every one-shot approach fails on it, each for a different reason. Vector search matches only "town" (the article says "chair" and "council"), GraphRAG has no name to start from, and the simple Hybrid routes to vector search and answers from the wrong passages. The agent rewrites the question, finds Mara Quill's election as council chair, notices it can't yet rule out a mayor, and walks the graph from the Harbor Council to confirm.
 
 **Test questions** are generated per type: a single fact (a passage with a number), multi-hop and hidden-link chains (two-step paths in the graph whose facts come from different documents; "hidden link" means vector search was checked and missed the second document), a comparison, a complete list (the best-connected entity), a big-picture question (from community summaries), a vague question (a passage that names no entities), and an unanswerable one (a detail the passage doesn't contain). Each comes with a reference answer, and Claude grades all three answers against it.
 

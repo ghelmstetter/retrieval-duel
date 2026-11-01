@@ -66,7 +66,7 @@ function renderDatasets(){
   $('#datasets').innerHTML=cards+catCards+`<button class="ds add${state.pending==='upload'?' on':''}" id="addDs"><span class="tag">Your data</span><h3>+ Add your own</h3><p>Upload text, Markdown, PDF or JSON files.</p></button>`;
   document.querySelectorAll('.ds[data-slug]').forEach(c=>{ const pick=()=>selectDataset(c.dataset.slug); c.onclick=e=>{ if(!e.target.dataset.del) pick(); }; c.onkeydown=e=>{ if(e.key==='Enter') pick(); }; });
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{ e.stopPropagation();
-    if(b.dataset.confirm!=='1'){ b.dataset.confirm='1'; b.textContent='Really delete?'; return; }
+    if(b.dataset.confirm!=='1'){ b.dataset.confirm='1'; b.textContent='Confirm delete?'; return; }
     try{ await api('/api/datasets/'+b.dataset.del,{method:'DELETE'}); if(state.ds===b.dataset.del){ state.ds=null; state.data=null; } await refreshDatasets(); if(!state.ds && state.datasets[0]) selectDataset(state.datasets[0].slug); }catch(err){ alertBox(err.message); } });
   $('#addDs').onclick=()=>{ if(state.status.public){ showLocalOnly('upload','Your own documents'); return; } preview('upload'); $('#importBox').hidden=true; $('#uploadBox').hidden=false; $('#upName').focus(); };
   document.querySelectorAll('.ds[data-cat]').forEach(c=>{ const open=()=>openImport(c.dataset.cat); c.onclick=open; c.onkeydown=e=>{ if(e.key==='Enter') open(); }; });
@@ -137,7 +137,7 @@ function setCta(s){
   const notes={
     loading:`Loading ${m.name||'the dataset'}'s indexes…`,
     idle: m.demo?'Takes about 8 seconds. The demo\'s graph was built ahead of time; this replays how it happens, step by step, in the two panels below.':'Already indexed. Click to watch the indexes being assembled in the panels below.',
-    new:'This runs the real thing: passages are embedded on your computer, and Claude reads every document to build the graph.',
+    new:'This builds both indexes: passages are embedded on your computer, and Claude reads every document to build the graph.',
     running:'Working. You can watch the progress below.',
     error:(m.error?'Last attempt failed: '+m.error:'Last attempt failed.'),
     done:'Both indexes are built. Hover the dots and circles below to explore them, or move on.'};
@@ -657,7 +657,7 @@ const SLIDES=[
   <line x1="114" y1="92" x2="140" y2="96" stroke="#ff5f8f" stroke-width="2" class="draw" style="animation-delay:1.55s"/>
   <circle cx="114" cy="92" r="8" fill="#ff5f8f" class="pop" style="animation-delay:.4s"/>
   <text x="14" y="26" fill="#ffc2d4" font-size="13" class="pop" style="animation-delay:.4s">Question: "Who pays for the seawall?"</text>
- </svg><p class="small">Real embeddings have hundreds of dimensions. We flatten them to two so you can see them.</p>`},
+ </svg><p class="small">Embeddings have hundreds of dimensions. We flatten them to two so you can see them.</p>`},
 {eyebrow:'Approach 2',title:'GraphRAG: search by following connections',
  copy:`<ol class="how"><li>Before anyone asks anything, an AI reads every document and writes down the people, places and things it mentions, and how they relate: "Mara Quill chairs the Harbor Council."</li>
  <li>Together these form a <span class="term g">knowledge graph</span>: circles for things, lines for relationships.</li>
@@ -716,12 +716,12 @@ const SLIDES=[
    <li class="minus">Drops details like dates during extraction</li><li class="minus">Needs a name in the question to start</li><li class="minus">Expensive to build</li></ul></div>
  </div>`},
 {eyebrow:'In practice',title:'Why not both?',
- copy:`<p>Because each approach's blind spots are the other's strengths, real systems often combine them. Four common patterns:</p>
+ copy:`<p>Because each approach's blind spots are the other's strengths, production systems often combine them. Four common patterns:</p>
  <ol class="how"><li><b>Routing:</b> check what kind of question it is, then send it to the right search.</li>
  <li><b>Run both and merge:</b> search both ways and combine the results, often with a ranking model picking the best pieces.</li>
  <li><b>Graph-enhanced vector search:</b> find passages by meaning first, then follow graph connections out from the names in them.</li>
  <li><b>Agentic:</b> give the AI the search tools and let it decide, step by step, which to use and when it has enough.</li></ol>
- <div class="catch"><b>Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs). Full GraphRAG is used where relationships really matter, because building the graph is expensive.</div>`,
+ <div class="catch"><b>Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs). Full GraphRAG is used where relationships matter most, because building the graph is expensive.</div>`,
  visual:`<div class="routes">
   <div class="box pop">"Which business does the council chair's sister run?"</div>
   <div class="down pop" style="animation-delay:.3s">↓</div>

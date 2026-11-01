@@ -567,7 +567,7 @@ a.btn{text-decoration:none;display:inline-block}
       <li><b>Run both and merge:</b> search both ways and combine the results, often with a ranking model picking the best pieces. Rarely misses, costs more per question.</li>
       <li><b>Graph-enhanced vector search:</b> find passages by meaning first, then follow graph connections out from the names in them. This fixes GraphRAG's "needs a name to start" problem. Popular GraphRAG tools such as Microsoft GraphRAG and LightRAG already blend the two internally.</li>
       <li><b>Agentic retrieval:</b> give the AI the search tools and let it decide, step by step, which to use and when it has enough evidence. This is what Agentic does in the duel. Try the "Who is in charge of the town?" case study to see why it matters.</li></ul>
-      <p><b style="color:var(--fg)">Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs), plus a ranking model. Full GraphRAG is used more selectively, where relationships really matter, because building the graph is expensive.</p></div>
+      <p><b style="color:var(--fg)">Reality check:</b> the most common combination in production is vector search plus old-fashioned keyword search (good for exact names, codes and IDs), plus a ranking model. Full GraphRAG is used more selectively, where relationships matter most, because building the graph is expensive.</p></div>
   </div>
   <div class="row"><button class="btn ghost" id="resetVotes">Clear my votes</button><button class="btn big" data-goto="duel">Back to the duel →</button></div>
 </section>

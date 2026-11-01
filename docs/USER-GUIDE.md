@@ -48,7 +48,7 @@ Pick a dataset, then **index** it: prepare it for searching. Indexing happens on
 | **The Larkspur Gazette** (demo) | 17 short articles about a fictional harbor town, with a prebuilt graph and nine hand-made questions. Works without an API key. |
 | **MultiHop-RAG** | News articles from late 2023. Its sample includes some of the dataset's own questions with official answers. |
 | **GraphRAG-Bench (novel)** | One novel, split into sections, with the study's own questions. |
-| **Enron emails** | A run of real emails from the public Enron corpus. |
+| **Enron emails** | A run of emails from the public Enron corpus. |
 | **+ Add your own** | Upload your own files. |
 
 The selected card has a white outline. Clicking a public dataset or **+ Add your own** opens a panel below the cards; **Cancel**, or clicking another dataset, closes it.
