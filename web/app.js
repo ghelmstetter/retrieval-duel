@@ -8,7 +8,7 @@ const WIN_LABEL={vector:'Vector',graph:'Graph',hybrid:'Hybrid',agentic:'Agentic'
 const ROUTE_LABEL={vector:'vector search only',graph:'the graph only',both:'both, merged'};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const state={catalog:[],pending:null,seen:new Set(),status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
+const state={saved:{},catalog:[],pending:null,seen:new Set(),status:{},datasets:[],ds:null,data:null,questions:[],types:{},votes:{},current:null,last:null,run:0,shown:false,job:null};
 
 const voteKey=()=>'rd-votes-'+state.ds;
 function localVotes(){ try{ return JSON.parse(localStorage.getItem(voteKey())||'{}'); }catch(e){ return {}; } }
@@ -264,6 +264,7 @@ async function loadViz(){
   if(run!==state.run){ return; }
   state.data=c.data; state.questions=c.questions; state.types=c.types;
   state.votes=state.status.public?localVotes():await api(`/api/datasets/${slug}/votes`).catch(()=>({}));
+  state.saved=state.status.public?{}:await api(`/api/datasets/${slug}/results`).catch(()=>({}));
   if(run!==state.run) return;
   await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));  // let the spinner paint before the layout work
   buildViz(c.data);
@@ -392,17 +393,31 @@ async function renderProfile(){
 }
 
 // ================= duel =================
+const when=t=>{ try{ return new Date(t*1000).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } };
+function showSavedBar(r){
+  const bar=$('#savedBar'), key=state.current&&!state.current.custom?state.current.id:'q:'+state.current.q.trim().toLowerCase();
+  if(r.just_saved){ state.saved[key]=Date.now()/1000; renderDeck(); }
+  if(!r.saved_at && !r.just_saved){ bar.hidden=true; return; }
+  const cost=(r.meter&&r.meter.dollars)||0;
+  bar.hidden=false;
+  $('#savedMsg').innerHTML=r.saved_at
+    ? `<b>Saved result</b> from ${esc(when(r.saved_at))}. Shown instantly, at no cost.`
+    : `<b>Saved.</b> Next time you pick this question, this result comes back instantly and free.`;
+  $('#rerunBtn').textContent=`Run again${cost?` (about $${cost.toFixed(cost<0.01?3:2)})`:''}`;
+}
 function renderDeck(){
-  $('#deck').innerHTML=state.questions.map(s=>`<button class="qcard" data-id="${s.id}" aria-pressed="${state.current&&state.current.id===s.id}"><span class="ty"><span>${esc(s.label)}</span>${state.votes[s.id]?'<span class="done">voted</span>':''}</span><span class="qq">${esc(s.q)}</span></button>`).join('')||'<p class="lede">No test questions were generated for this dataset. Type your own below.</p>';
+  $('#deck').innerHTML=state.questions.map(s=>`<button class="qcard" data-id="${s.id}" aria-pressed="${state.current&&state.current.id===s.id}"><span class="ty"><span>${esc(s.label)}</span><span class="done">${[state.saved[s.id]?'saved':'',state.votes[s.id]?'voted':''].filter(Boolean).join(' · ')}</span></span><span class="qq">${esc(s.q)}</span></button>`).join('')||'<p class="lede">No test questions were generated for this dataset. Type your own below.</p>';
   document.querySelectorAll('.qcard').forEach(b=>b.onclick=()=>{ const s=state.questions.find(x=>x.id===b.dataset.id); $('#q').value=s.q; ask(s); });
   updateScore();
   $('#q').placeholder=`Ask anything about ${curMeta().name||'this dataset'}`;
   $('#qLabel').textContent=`Or type your own question about ${curMeta().name||'this dataset'}`;
 }
+$('#rerunBtn').onclick=()=>{ if(state.current) ask(state.current,true); };
 $('#askForm').onsubmit=e=>{ e.preventDefault(); const q=$('#q').value.trim(); if(!q) return;
   const match=state.questions.find(s=>s.q.toLowerCase()===q.toLowerCase()); ask(match||{id:null,type:'custom',label:'Your question',q,custom:true}); };
 
-async function ask(item){
+async function ask(item,fresh=false){
+  $('#savedBar').hidden=true;
   if(!state.shown) showIndexedNow();
   state.current=item; renderDeck();
   const t=state.types[item.type]||{};
@@ -421,11 +436,12 @@ async function ask(item){
   document.querySelectorAll('#votes button').forEach(b=>b.setAttribute('aria-pressed',state.votes[item.id||item.q]&&state.votes[item.id||item.q].vote===b.dataset.v));
   const run=++state.run;
   if(!REDUCED) $('#stage').scrollIntoView({behavior:'smooth',block:'start'});
-  let r; try{ r=await api(`/api/datasets/${state.ds}/ask`,{method:'POST',body:{question:item.q,sample_id:item.custom?null:item.id}}); }
+  let r; try{ r=await api(`/api/datasets/${state.ds}/ask`,{method:'POST',body:{question:item.q,sample_id:item.custom?null:item.id,fresh}}); }
   catch(e){ clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true; if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message); } return; }
   if(run!==state.run) return;
   clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true;
   state.last=r;
+  showSavedBar(r);
   document.querySelector('#router .route.'+r.route.route).classList.add('on');
   $('#routeWhy').textContent=r.route.reason+(r.route.by==='llm'?' (decided by Claude)':' (decided by simple rules)');
   animateVector(r.vector,run); animateGraph(r.graph,run);

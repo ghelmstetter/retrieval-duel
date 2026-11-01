@@ -19,7 +19,8 @@ class NoKeyError(RuntimeError):
 class Meter:
     """Counts tokens and dollars for one job (an indexing run or a question)."""
 
-    def __init__(self, budget_dollars=None):
+    def __init__(self, budget_dollars=None, fresh=False):
+        self.fresh = fresh  # True: ignore cached replies and ask Claude again
         self.lock = threading.Lock()
         self.calls = 0
         self.cached = 0
@@ -77,7 +78,7 @@ def complete(system, user, *, model=None, max_tokens=1500, task="", meter=None):
     model = model or config.WORK_MODEL
     key = hashlib.sha256(json.dumps([model, system, user, max_tokens]).encode()).hexdigest()
     path = _cache_path(key)
-    if path.exists():
+    if path.exists() and not (meter and meter.fresh):
         data = json.loads(path.read_text(encoding="utf-8"))
         if meter:
             meter.add(model, data["in"], data["out"], cached=True)

@@ -173,7 +173,12 @@ async def ask(request):
     q = (body.get("question") or "").strip()
     if not q:
         return fail("Type a question first.")
-    return ok(await run_in_threadpool(pipeline.ask, ds.slug, q, body.get("sample_id")))
+    return ok(await run_in_threadpool(pipeline.ask, ds.slug, q, body.get("sample_id"), bool(body.get("fresh"))))
+
+
+@guarded
+async def results(request):
+    return ok(pipeline.saved_results(_ds(request).slug))
 
 
 @guarded
@@ -202,6 +207,7 @@ routes = [
     Route("/api/datasets/{slug}/documents", documents),
     Route("/api/datasets/{slug}/questions", question_list),
     Route("/api/datasets/{slug}/ask", ask, methods=["POST"]),
+    Route("/api/datasets/{slug}/results", results),
     Route("/api/datasets/{slug}/votes", votes, methods=["GET", "POST", "DELETE"]),
     Route("/api/jobs/{job}", job),
     Mount("/static", StaticFiles(directory=WEB), name="static"),

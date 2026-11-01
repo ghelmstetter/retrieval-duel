@@ -296,10 +296,14 @@ a.btn{text-decoration:none;display:inline-block}
 .agsteps .q{color:#ffc2d4}
 .agsteps .found{display:block;color:var(--faint);font-size:12px}
 .agsteps .cost{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:6px}
+.savedbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;border:1px dashed var(--line2);border-radius:12px;padding:8px 10px 8px 14px;font-size:13.5px;color:var(--muted)}
+.savedbar b{color:var(--fg)}
+.savedbar .btn{margin-left:auto}
 .dsbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--deck);padding:8px 10px 8px 14px}
 .dsbar b{font-family:var(--display);font-size:14px;font-weight:700}
 .dsbar #dsStats{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
-.dsbar .btn.small{padding:5px 10px;font-size:13px;margin-left:auto}
+.btn.small{padding:5px 10px;font-size:13px}
+.dsbar .btn.small{margin-left:auto}
 .spin{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
 .spin::before{content:"";width:16px;height:16px;border-radius:50%;border:2px solid var(--line2);border-top-color:currentColor;animation:spin .8s linear infinite;flex:none}
 .spin.vec{color:var(--vec)} .spin.gr{color:var(--graph)} .spin.ag{color:var(--agent)} .spin.hy{color:#9ee6b8}
@@ -442,6 +446,7 @@ a.btn{text-decoration:none;display:inline-block}
     <button class="btn" type="submit">Ask all four</button>
   </form>
   <div class="predict" id="predict"></div>
+  <div class="savedbar" id="savedBar" hidden><span id="savedMsg"></span><button class="btn ghost small" id="rerunBtn" type="button">Run again</button></div>
   <div class="router" id="router" hidden>
     <span class="rlabel">Hybrid router</span><span class="arrow">→</span>
     <span class="route vector">Vector</span><span class="route both">Both</span><span class="route graph">Graph</span>

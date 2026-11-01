@@ -395,17 +395,36 @@ def _stats(ds):
 
 
 # ---------------- asking ----------------
-def ask(slug, question, sample_id=None):
+def _result_key(sample, question):
+    return sample["id"] if sample else "q:" + question.strip().lower()
+
+
+def saved_results(slug):
+    """Which questions have a saved live result: {key: saved_at}."""
+    data = _read(Dataset(slug).folder / "results.json", {})
+    return {k: v.get("saved_at") for k, v in data.items()}
+
+
+def ask(slug, question, sample_id=None, fresh=False):
     ds = Dataset(slug)
     if not (ds.folder / "vectors.npy").exists():
         if ds.meta.get("demo"):
             build_demo_indexes(ds)
         else:
             raise ValueError("This dataset hasn't been indexed yet.")
-    meter = llm.Meter()
+    meter = llm.Meter(fresh=fresh)
     sample = next((q for q in ds.questions if q["id"] == sample_id), None) if sample_id else None
     if sample is None:
         sample = next((q for q in ds.questions if q["q"].strip().lower() == question.strip().lower()), None)
+
+    # A live run that was saved earlier comes back instantly and free, unless a rerun was asked for.
+    results_path = ds.folder / "results.json"
+    key = _result_key(sample, question)
+    if config.has_key() and not config.PUBLIC_DEMO and not fresh:
+        saved = _read(results_path, {}).get(key)
+        if saved:
+            saved["result"]["saved_at"] = saved["saved_at"]
+            return saved["result"]
 
     t0 = time.time()
     v = ds.vindex().search(question, ds.meta.get("top_k"))
@@ -429,7 +448,7 @@ def ask(slug, question, sample_id=None):
 
     top_k = ds.meta.get("top_k")
     if live:
-        agent_meter = llm.Meter()
+        agent_meter = llm.Meter(fresh=fresh)
         jobs = {
             "vector": lambda: qa.answer(question, "passages found by vector search", v["context"], meter),
             "graph": lambda: qa.answer(question, "community summaries" if g["mode"] == "global" else "facts from a knowledge graph", g["context"], meter),
@@ -485,6 +504,12 @@ def ask(slug, question, sample_id=None):
         result["agent"]["latency"] = round(0.9 * llm_steps + 0.4 * result["agent"]["searches"] + result["agent"]["context_tokens"] / 2000, 1)
         result["estimated_latency"] = True
     result["meter"] = meter.as_dict()
+    if live and not config.PUBLIC_DEMO:
+        with _LOCK:
+            saved = _read(results_path, {})
+            saved[key] = {"saved_at": time.time(), "result": result}
+            _write(results_path, saved)
+        result["just_saved"] = True
     return result
 
 
