@@ -1,5 +1,7 @@
 # Retrieval Duel
 
+**Try the demo:** https://retrieval-duel.vercel.app (nothing to install, no API key). The hosted demo uses the Larkspur Gazette with pre-written answers. To use live answers, other datasets, or your own files, run it on your computer (see [Quick start](#quick-start-windows)).
+
 **This app compares Vector RAG, GraphRAG, a simple Hybrid and an Agentic retriever, side by side.** It's also a hands-on tutorial: load a set of documents, watch both kinds of retrieval index them, then ask questions and watch each one search, with the evidence it found laid out so you can judge. It generates test questions designed to expose each method's strengths and blind spots, and grades the answers.
 
 It's built for learning, not production. Everything is small, visible and explained.
@@ -17,16 +19,6 @@ It's built for learning, not production. Everything is small, visible and explai
 ![The Load step: the Larkspur Gazette demo, one-click public datasets, and your own uploads, with a cost estimate before indexing](docs/images/load.jpg)
 
 The demo dataset, **The Larkspur Gazette**, is 17 short articles about a fictional harbor town, so the AI can't answer from its training data. Its graph is prebuilt and its sample answers are pre-written, so it works with no API key.
-
-## Hosting the demo on Vercel
-
-The repo includes `vercel.json` and `api/index.py`, so you can host a public, keyless demo on Vercel's free Hobby plan:
-
-1. At [vercel.com](https://vercel.com), choose **Add New → Project** and import this GitHub repo.
-2. Framework Preset: **Other**. Root Directory: `./`. Leave the build settings empty.
-3. Deploy. No environment variables are needed.
-
-The hosted version runs in **public demo mode**: only the Larkspur Gazette, with pre-written answers; uploads, imports and indexing are switched off; votes stay in each visitor's browser; and it never calls Claude, even if you add a key, so strangers can't run up a bill. Retrieval still runs live, so visitors can type their own questions and watch both searches work. The import and upload cards point visitors to this repo to run the full version locally.
 
 ## Quick start (Windows)
 
