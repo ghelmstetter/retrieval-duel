@@ -95,6 +95,7 @@ async function selectDataset(slug){
   $('#indexBtn').textContent=m.demo?`Index ${m.name}`:`Index ${m.name}`;
   loadDocs();
   if(m.demo || m.status==='ready'){
+    setCta('loading');
     await loadViz();
     // Show the "build it" moment the first time only; after that (or for datasets you indexed yourself) show it ready.
     if(state.seen.has(slug) || (!m.demo && m.status==='ready')) showIndexedNow(); else setCta('idle');
@@ -128,18 +129,20 @@ function renderEstimate(e){
 function setCta(s){
   const m=curMeta(); state.cta=s;
   $('#vecEmpty').hidden=$('#grEmpty').hidden= !(s==='idle'||s==='new'||s==='error'||(s==='running'&&!state.data));
-  $('#indexBtn').hidden= s==='done' && !(m.demo||m.status==='ready');
+  $('#indexBtn').hidden= s==='loading' || (s==='done' && !(m.demo||m.status==='ready'));
   $('#indexBtn').disabled= s==='running' || (s==='new' && !state.status.has_key);
   $('#indexBtn').classList.toggle('ghost', s==='done');
   $('#indexBtn').textContent= s==='done'?'Replay indexing':s==='running'?'Indexing…':(s==='error'?'Try indexing again':`Index ${m.name||'dataset'}`);
   $('#toProfile').hidden= s!=='done';
   const notes={
+    loading:`Loading ${m.name||'the dataset'}'s indexes…`,
     idle: m.demo?'Takes about 8 seconds. The demo\'s graph was built ahead of time; this replays how it happens, step by step, in the two panels below.':'Already indexed. Click to watch the indexes being assembled in the panels below.',
     new:'This runs the real thing: passages are embedded on your computer, and Claude reads every document to build the graph.',
     running:'Working. You can watch the progress below.',
     error:(m.error?'Last attempt failed: '+m.error:'Last attempt failed.'),
     done:'Both indexes are built. Hover the dots and circles below to explore them, or move on.'};
   $('#ctaNote').textContent=notes[s]||'';
+  $('#ctaNote').classList.toggle('spin', s==='loading');
   if(s==='done'){ $('#log').hidden=false; }
   const st=m.stats; if(st){ $('#howVec').textContent=`Cut ${st.docs} documents into ${st.chunks} passages and give each one coordinates on the map of meaning.`;
     $('#howGraph').textContent=`An AI reads each document and writes down the people, places and things in it and how they connect: here ${st.entities} entities and ${st.relations} relationships, grouped into ${st.communities} communities with a summary of each.`; }
@@ -164,7 +167,7 @@ async function pollJob(id){
       const pct=done?100:(isCur&&j.total?100*j.done/j.total:0);
       return `<span class="lbl ${done?'done':isCur?'on':''}">${done?'✓ ':''}${label}</span><div class="bar"><i style="width:${pct}%"></i></div><span class="n">${isCur&&j.total?j.done+'/'+j.total:(done?'done':'')}</span>`; }).join('');
     $('#log').innerHTML=`<span>entities <b>${j.entities}</b></span><span>relations <b>${j.relations}</b></span><span>communities <b>${j.communities}</b></span><span>AI calls <b>${j.meter.calls||0}</b> (${j.meter.cached||0} cached)</span><span>spent <b>$${(j.meter.dollars||0).toFixed(3)}</b></span><span class="live">${esc(j.message||'')}</span>`;
-    if(j.status==='done'){ await refreshDatasets(); await loadViz(); playIndexing(); return; }
+    if(j.status==='done'){ delete vizCache[state.ds]; await refreshDatasets(); await loadViz(); playIndexing(); return; }
     if(j.status==='error'){ await refreshDatasets(); setCta('error'); alertBox(j.error); return; }
     await new Promise(r=>setTimeout(r,700));
   }
@@ -243,14 +246,29 @@ function clearViz(){
   vSvg.selectAll('g').remove(); gSvg.selectAll('g').remove(); $('#vecOverlay').innerHTML=''; $('#grOverlay').innerHTML='';
   $('#vecMeta').textContent='passages on a map of meaning'; $('#grMeta').textContent='entities, relations and communities';
 }
+const vizCache={};
+function vizLoading(on){
+  ['#vecLoad','#grLoad'].forEach(s=>$(s).hidden=!on);
+  if(on){ $('#vecEmpty').hidden=$('#grEmpty').hidden=true; }
+}
 async function loadViz(){
-  const run=state.run;
-  let data; try{ data=await api(`/api/datasets/${state.ds}/viz`); }catch(e){ alertBox(e.message); return; }
+  const run=state.run, slug=state.ds;
+  let c=vizCache[slug];
+  if(!c){
+    vizLoading(true);
+    try{
+      const [data,q]=await Promise.all([api(`/api/datasets/${slug}/viz`),api(`/api/datasets/${slug}/questions`)]);
+      c={data,questions:q.questions,types:q.types};
+    }catch(e){ vizLoading(false); alertBox(e.message); return; }
+  }
+  if(run!==state.run){ return; }
+  state.data=c.data; state.questions=c.questions; state.types=c.types;
+  state.votes=state.status.public?localVotes():await api(`/api/datasets/${slug}/votes`).catch(()=>({}));
   if(run!==state.run) return;
-  state.data=data;
-  const q=await api(`/api/datasets/${state.ds}/questions`); state.questions=q.questions; state.types=q.types;
-  state.votes=state.status.public?localVotes():await api(`/api/datasets/${state.ds}/votes`);
-  buildViz(data);
+  await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));  // let the spinner paint before the layout work
+  buildViz(c.data);
+  vizCache[slug]=c;   // positions are now stored on c.data, so the next visit skips the layout
+  vizLoading(false);
 }
 function buildViz(data){
   clearViz();
@@ -261,8 +279,8 @@ function buildViz(data){
   const links=data.vector.links.map(([a,b,s])=>({source:a,target:b,s}));
   const sim=d3.forceSimulation(V.nodes).force('link',d3.forceLink(links).distance(l=>Math.max(14,90-l.s*110)).strength(l=>Math.min(1,Math.max(.05,l.s*1.4))))
     .force('charge',d3.forceManyBody().strength(big?-12:-60)).force('center',d3.forceCenter(W/2,H/2)).force('collide',d3.forceCollide(big?3:9)).stop();
-  for(let i=0;i<(n>1500?80:300);i++) sim.tick();
-  fit(V.nodes,48,40);
+  if(data._vpos){ V.nodes.forEach((d,i)=>{ d.x=data._vpos[i][0]; d.y=data._vpos[i][1]; }); }
+  else { for(let i=0;i<(n>1500?80:300);i++) sim.tick(); fit(V.nodes,48,40); data._vpos=V.nodes.map(d=>[d.x,d.y]); }
   const r=big?2.6:5; V.r=r;
   const bg=vSvg.append('g');
   [60,120,180,240].forEach(rr=>bg.append('circle').attr('cx',W/2).attr('cy',H/2-12).attr('r',rr).attr('fill','none').attr('stroke','#233554').attr('stroke-dasharray','2 5').attr('opacity',.6));
@@ -288,8 +306,8 @@ function buildViz(data){
   const gsim=d3.forceSimulation(G.nodes).force('link',d3.forceLink(G.links).id(d=>d.id).distance(dense?30:58).strength(.4))
     .force('charge',d3.forceManyBody().strength(dense?-60:-320)).force('x',d3.forceX(d=>(anchors[d.c]||anchors.misc)[0]).strength(.12)).force('y',d3.forceY(d=>(anchors[d.c]||anchors.misc)[1]).strength(.12))
     .force('collide',d3.forceCollide(d=>rad(d)+(dense?4:16))).stop();
-  for(let i=0;i<(ne>800?120:400);i++) gsim.tick();
-  fit(G.nodes,56,34);
+  if(data._gpos){ G.nodes.forEach((d,i)=>{ d.x=data._gpos[i][0]; d.y=data._gpos[i][1]; }); }
+  else { for(let i=0;i<(ne>800?120:400);i++) gsim.tick(); fit(G.nodes,56,34); data._gpos=G.nodes.map(d=>[d.x,d.y]); }
   const hullG=gSvg.append('g'), hullLab=gSvg.append('g'); G.edgeG=gSvg.append('g'); G.edgeLabG=gSvg.append('g'); const nodeG=gSvg.append('g'); G.ringG=gSvg.append('g');
   const hullLine=d3.line().curve(d3.curveCatmullRomClosed.alpha(.6));
   G.hulls=comms.map(c=>{ const pts=[]; G.nodes.filter(d=>d.c===c.id).forEach(d=>{ for(let a=0;a<8;a++) pts.push([d.x+Math.cos(a*Math.PI/4)*(rad(d)+12),d.y+Math.sin(a*Math.PI/4)*(rad(d)+12)]); });
