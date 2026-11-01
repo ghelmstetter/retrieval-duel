@@ -59,7 +59,7 @@ class ClaudePlanner:
     def plan(self, question):
         user = f"Question: {question}\n\n{self.context}\n\nEntity names in the graph:\n{self.names}"
         try:
-            r = llm.complete_json(PLAN_SYSTEM, user, task="agent_plan", max_tokens=500, meter=self.meter)
+            r = llm.complete_json(PLAN_SYSTEM, user, task="agent_plan", max_tokens=2000, meter=self.meter)
             acts = [a for a in r.get("actions") or [] if isinstance(a, dict) and a.get("tool") in ("vector", "graph", "summaries")][:2]
             return {"rewritten": str(r.get("rewritten") or question), "why": str(r.get("why") or ""),
                     "actions": acts or [{"tool": "vector", "query": question}]}
@@ -70,7 +70,7 @@ class ClaudePlanner:
         user = (f"Question: {question}\n\n{self.context}\n\nSearches already done:\n" + "\n".join(f"- {d}" for d in done) +
                 f"\n\nEntity names in the graph:\n{self.names}\n\nEvidence so far:\n{evidence_text[:12000]}")
         try:
-            r = llm.complete_json(CHECK_SYSTEM, user, task="agent_check", max_tokens=400, meter=self.meter)
+            r = llm.complete_json(CHECK_SYSTEM, user, task="agent_check", max_tokens=2000, meter=self.meter)
             nxt = r.get("next") if isinstance(r.get("next"), dict) and r["next"].get("tool") in ("vector", "graph", "summaries") else None
             return {"enough": bool(r.get("enough")) or nxt is None, "note": str(r.get("note") or ""), "next": nxt}
         except Exception:
@@ -229,7 +229,7 @@ def run(question, vindex, gi, *, planner, top_k=None, answer=True, meter=None):
         before = mark()
         if ctx.strip():
             text = llm.complete(ANSWER_SYSTEM, f"Question: {question}\n\nEvidence gathered by several searches:\n{ctx}",
-                                model=config.ANSWER_MODEL, task="answer", max_tokens=500, meter=meter).strip()
+                                model=config.ANSWER_MODEL, task="answer", max_tokens=3000, meter=meter).strip()
         else:
             text = "None of the searches found relevant evidence, so I can't answer this."
         step("answer", "Wrote the answer from all the evidence gathered.", before)

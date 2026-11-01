@@ -91,25 +91,32 @@ def complete(system, user, *, model=None, max_tokens=1500, task="", meter=None):
     if meter and meter.over_budget():
         raise BudgetExceeded(f"Stopped: this run passed the ${meter.budget:.2f} budget.")
 
-    stop = ""
-    for attempt in range(2):  # an empty reply gets one automatic retry
+    stop, limit = "", max_tokens
+    for attempt in range(2):
         if config.FAKE_LLM:
             from .fake_llm import fake_complete
             text = fake_complete(task, system, user)
             tin, tout = len(system + user) // 4, len(text) // 4
+            stop = "max_tokens" if tout >= limit else "end_turn"
         else:
             client = _get_client()
-            resp = client.messages.create(model=model, max_tokens=max_tokens, system=system,
+            resp = client.messages.create(model=model, max_tokens=limit, system=system,
                                           messages=[{"role": "user", "content": user}])
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
             tin, tout = resp.usage.input_tokens, resp.usage.output_tokens
             stop = getattr(resp, "stop_reason", "") or ""
         if meter:
             meter.add(model, tin, tout)
-        if text.strip():
+        if text.strip() and stop != "max_tokens":
             break
+        if stop == "max_tokens":  # ran out of room (some models spend part of it reasoning first): retry with double
+            limit *= 2
     if not text.strip():  # never cache or return an empty answer
         raise EmptyReply(f"Claude returned an empty reply twice (stop reason: {stop or 'unknown'}). Run it again.")
+    if stop == "max_tokens":  # still cut off: say so, and don't cache it
+        if task == "answer":
+            return text.rstrip() + " … [cut off: the reply hit its length limit]"
+        return text
 
     path.write_text(json.dumps({"text": text, "in": tin, "out": tout, "model": model}), encoding="utf-8")
     return text

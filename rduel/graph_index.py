@@ -168,7 +168,7 @@ def summarize_community(comm, ebyid, relations, meter):
              if r["s"] in members and r["t"] in members][:60]
     user = "Entities:\n" + "\n".join(lines) + "\n\nRelationships:\n" + ("\n".join(facts) or "- (none)")
     try:
-        data = llm.complete_json(SUMMARY_SYSTEM, user, task="summarize", max_tokens=800, meter=meter)
+        data = llm.complete_json(SUMMARY_SYSTEM, user, task="summarize", max_tokens=2000, meter=meter)
         return str(data.get("title", "Cluster"))[:40], str(data.get("summary", ""))
     except (ValueError, AttributeError, llm.EmptyReply):
         return "Cluster", ""

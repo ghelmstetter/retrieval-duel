@@ -45,7 +45,7 @@ def route(question, has_seeds, use_llm=True, meter=None):
     if use_llm and config.has_key():
         try:
             r = llm.complete_json(ROUTE_SYSTEM, f"Question: {question}\nNamed entities found in the graph: {'yes' if has_seeds else 'none'}",
-                                  task="route", max_tokens=200, meter=meter)
+                                  task="route", max_tokens=1500, meter=meter)
             if r.get("route") in ("vector", "graph", "both"):
                 r["by"] = "llm"
                 return r
@@ -66,7 +66,7 @@ def answer(question, evidence_label, context, meter=None):
     if not context.strip():
         return "The search found no evidence, so I can't answer this."
     user = f"Question: {question}\n\nEvidence ({evidence_label}):\n{context}"
-    return llm.complete(ANSWER_SYSTEM, user, model=config.ANSWER_MODEL, task="answer", max_tokens=500, meter=meter).strip()
+    return llm.complete(ANSWER_SYSTEM, user, model=config.ANSWER_MODEL, task="answer", max_tokens=3000, meter=meter).strip()
 
 
 JUDGE_SYSTEM = """You grade an answer against a reference answer.
@@ -80,7 +80,7 @@ If the reference says the answer isn't in the documents, a correct answer must a
 def judge(question, reference, candidate, meter=None):
     try:
         r = llm.complete_json(JUDGE_SYSTEM, f"Question: {question}\nReference answer: {reference}\nAnswer to grade: {candidate}",
-                              task="judge", max_tokens=200, meter=meter)
+                              task="judge", max_tokens=1500, meter=meter)
         if r.get("grade") in ("correct", "partial", "wrong"):
             return r
     except Exception:

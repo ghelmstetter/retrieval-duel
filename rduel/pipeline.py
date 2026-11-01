@@ -395,6 +395,9 @@ def _stats(ds):
 
 
 # ---------------- asking ----------------
+RESULTS_VERSION = 2  # bump to make older saved results rerun (v2: length-limit fix)
+
+
 def _result_key(sample, question):
     return sample["id"] if sample else "q:" + question.strip().lower()
 
@@ -402,7 +405,7 @@ def _result_key(sample, question):
 def saved_results(slug):
     """Which questions have a saved live result: {key: saved_at}."""
     data = _read(Dataset(slug).folder / "results.json", {})
-    return {k: v.get("saved_at") for k, v in data.items()}
+    return {k: v.get("saved_at") for k, v in data.items() if v.get("v", 1) >= RESULTS_VERSION}
 
 
 def ask(slug, question, sample_id=None, fresh=False):
@@ -424,6 +427,8 @@ def ask(slug, question, sample_id=None, fresh=False):
         saved = _read(results_path, {}).get(key)
         # Ignore a saved result with a blank answer (from before empty replies were caught); it reruns.
         if saved and any(saved["result"].get(n, {}).get("answer") == "" for n in ("vector", "graph", "hybrid", "agent")):
+            saved = None
+        if saved and saved.get("v", 1) < RESULTS_VERSION:  # saved before a fix that changes answers
             saved = None
         if saved:
             saved["result"]["saved_at"] = saved["saved_at"]
@@ -527,7 +532,7 @@ def ask(slug, question, sample_id=None, fresh=False):
             try:
                 with _LOCK:
                     saved = _read(results_path, {})
-                    saved[key] = {"saved_at": time.time(), "result": result}
+                    saved[key] = {"saved_at": time.time(), "v": RESULTS_VERSION, "result": result}
                     _write(results_path, saved)
                 result["just_saved"] = True
             except Exception as e:

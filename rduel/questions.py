@@ -62,7 +62,7 @@ INSTRUCTIONS = {
 def _write(qtype, material, meter):
     user = f"Question type: {qtype}\nInstruction: {INSTRUCTIONS[qtype]}\n\nMaterial:\n{material}"
     try:
-        r = llm.complete_json(QGEN_SYSTEM, user, task="qgen:" + qtype, max_tokens=500, meter=meter)
+        r = llm.complete_json(QGEN_SYSTEM, user, task="qgen:" + qtype, max_tokens=2000, meter=meter)
         q, a = str(r.get("question", "")).strip(), str(r.get("answer", "")).strip()
         return (q, a) if q and a else None
     except Exception:
