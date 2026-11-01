@@ -47,7 +47,7 @@ python -m rduel
 
 - **Graph indexing is the expensive part.** Claude reads every document once. The Load step shows an estimate before you start, and `RDUEL_MAX_INDEX_DOLLARS` in `.env` (default $2) stops a run that goes over.
 - **Every AI call is cached** in `data/cache`, so re-indexing the same text, or asking the same question again, is free.
-- **Each question** costs three answer calls plus a little routing and grading, typically a cent or two.
+- **Each question** costs four answer calls plus a little routing, the agent's planning and checking, and grading, typically a few cents.
 - Start small: 20 to 200 documents. Set a spending limit in the [Anthropic console](https://console.anthropic.com/) too.
 - Your key lives only in `.env`, which is excluded from git. Uploaded files stay in `data/` on your computer; their text is sent to the Anthropic API when you index or ask.
 
@@ -77,7 +77,7 @@ Choose small, medium or large. Nothing is sent to Claude until you click Index, 
 
 **Case study: "Who is in charge of the town?"** The Larkspur demo includes this question because it came up while testing the app and every one-shot approach fails on it, each for a different reason. Vector search matches only "town" (the article says "chair" and "council"), GraphRAG has no name to start from, and the simple Hybrid routes to vector search and answers from the wrong passages. The agent rewrites the question, finds Mara Quill's election as council chair, notices it can't yet rule out a mayor, and walks the graph from the Harbor Council to confirm.
 
-**Test questions** are generated per type: a single fact (a passage with a number), multi-hop and hidden-link chains (two-step paths in the graph whose facts come from different documents; "hidden link" means vector search was checked and missed the second document), a comparison, a complete list (the best-connected entity), a big-picture question (from community summaries), a vague question (a passage that names no entities), and an unanswerable one (a detail the passage doesn't contain). Each comes with a reference answer, and Claude grades all three answers against it.
+**Test questions** are generated per type: a single fact (a passage with a number), multi-hop and hidden-link chains (two-step paths in the graph whose facts come from different documents; "hidden link" means vector search was checked and missed the second document), a comparison, a complete list (the best-connected entity), a big-picture question (from community summaries), a vague question (a passage that names no entities), and an unanswerable one (a detail the passage doesn't contain). Each comes with a reference answer, and Claude grades all four answers against it.
 
 **Simplifications, on purpose:** this is a teaching version of GraphRAG, not a reproduction of Microsoft's. Entity merging is name-based, global search reads all summaries in one call instead of a full map-reduce, and the graph answer deliberately gets only extracted facts (no original text) so you can see what extraction loses. Generated questions lean on the graph, so a bad extraction can produce a bad question; check the reference answer when a result looks odd.
 
@@ -97,7 +97,7 @@ rduel/            Python package
   qa.py           router, answer prompt, auto-judge
   agent.py        the Agentic contestant: plan, search, check, search again
   catalog.py      one-click importers for public datasets
-  pipeline.py     datasets, indexing job, asking all three
+  pipeline.py     datasets, indexing job, asking all four
   server.py       web API (Starlette)
 web/              the page (HTML, CSS, JS with D3 for the visuals)
 docs/USER-GUIDE.md  full walkthrough
