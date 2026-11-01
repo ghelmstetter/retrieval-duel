@@ -37,6 +37,8 @@ The hosted version runs in **public demo mode**: only the Larkspur Gazette, with
 
 To update later: `git pull`, then `run.bat`.
 
+Then read the **[user guide](docs/USER-GUIDE.md)** for a walkthrough of every step, the settings, and troubleshooting.
+
 <details><summary>Manual setup (Mac, Linux, or if you prefer the terminal)</summary>
 
 ```bash
@@ -106,6 +108,7 @@ rduel/            Python package
   pipeline.py     datasets, indexing job, asking all three
   server.py       web API (Starlette)
 web/              the page (HTML, CSS, JS with D3 for the visuals)
+docs/USER-GUIDE.md  full walkthrough
 demo/larkspur/    the demo dataset with its prebuilt graph
 run.bat           one-click setup and start for Windows
 api/index.py      Vercel entry point (public demo mode)
