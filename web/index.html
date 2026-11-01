@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Retrieval Duel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Oswald:wght@700&display=swap">
 <style>
 /* Layout: a "duel stage" of two live panels (vector map | knowledge graph) under a 4-step lesson rail. Single dark look, by choice: the retrieval glows. */
 :root{
@@ -36,6 +36,8 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-be
 .brand h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,40px);letter-spacing:-.01em;margin:0;line-height:1;text-wrap:balance}
 .brand h1 .v{color:var(--vec)} .brand h1 .g{color:var(--graph)} .brand h1 .x{color:var(--faint);font-weight:500;font-size:.6em;vertical-align:.25em;margin:0 .25em}
 .brand p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+.brand .titlerow{display:flex;align-items:center;gap:clamp(10px,1.4vw,14px)}
+.rdlogo{display:block;flex:none;width:44px;height:44px}
 .proto{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--query);border:1px solid rgba(255,95,143,.4);padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
 nav.steps{display:flex;gap:6px;flex-wrap:wrap}
 nav.steps button{background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:center;color:var(--muted);font-weight:600}
@@ -339,8 +341,11 @@ a.btn{text-decoration:none;display:inline-block}
 <div class="wrap">
 <header>
   <div class="brand">
-    <h1><span class="v">Vector</span><span class="x">vs</span><span class="g">Graph</span></h1>
-    <p>Retrieval Duel: watch two kinds of RAG search the same documents, and learn which questions each one is built for. <span class="proto" id="liveChip">Checking…</span></p>
+    <div class="titlerow">
+      <svg class="rdlogo" id="rdLogo" role="img" aria-label="Retrieval Duel"></svg>
+      <h1><span class="v">Vector</span><span class="x">vs</span><span class="g">Graph</span></h1>
+    </div>
+    <p>Watch two kinds of RAG search the same documents, and learn which questions each one is built for. <span class="proto" id="liveChip">Checking…</span></p>
   </div>
   <nav class="steps" aria-label="Lesson steps">
     <button data-step="basics" aria-current="step"><span class="n">1</span><span class="lbl">Basics</span></button>

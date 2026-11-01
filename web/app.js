@@ -767,6 +767,27 @@ document.addEventListener('keydown',e=>{
 
 
 
+// ================= logo =================
+// "RETRIEVAL" over "DUEL" in a square as tall as the title line, both words sized to the same width.
+function drawLogo(){
+  const svg=$('#rdLogo'); if(!svg) return;
+  const h1=document.querySelector('.brand h1');
+  const W=Math.round(parseFloat(getComputedStyle(h1).fontSize)*1.1);
+  const ctx=document.createElement('canvas').getContext('2d');
+  const m=t=>{ ctx.font="700 100px 'Oswald', 'Arial Narrow', sans-serif"; const r=ctx.measureText(t); return {w:r.width,cap:r.actualBoundingBoxAscent||72}; };
+  const sw=Math.max(1,W/30), pad=W*0.13, inner=W-2*pad, m1=m('RETRIEVAL'), m2=m('DUEL');
+  const fs1=100*inner/m1.w, fs2=100*inner/m2.w, c1=m1.cap*fs1/100, c2=m2.cap*fs2/100, gap=W*0.07;
+  const y1=(W-(c1+gap+c2))/2+c1, y2=y1+gap+c2;
+  svg.setAttribute('viewBox',`0 0 ${W} ${W}`); svg.style.width=svg.style.height=W+'px';
+  svg.innerHTML=`<defs><linearGradient id="rdEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3fd6c8"/><stop offset="1" stop-color="#ffb547"/></linearGradient></defs>
+    <rect x="${sw/2}" y="${sw/2}" width="${W-sw}" height="${W-sw}" rx="${W*0.12}" fill="#0b1424" stroke="url(#rdEdge)" stroke-width="${sw}"/>
+    <text x="${pad}" y="${y1}" font-family="Oswald, 'Arial Narrow', sans-serif" font-weight="700" font-size="${fs1}" fill="#e9eef7">RETRIEVAL</text>
+    <text x="${pad}" y="${y2}" font-family="Oswald, 'Arial Narrow', sans-serif" font-weight="700" font-size="${fs2}" fill="#e9eef7">DUEL</text>`;
+}
+drawLogo();
+if(document.fonts&&document.fonts.load) document.fonts.load("700 100px 'Oswald'").then(drawLogo).catch(()=>{});
+let logoTimer; window.addEventListener('resize',()=>{ clearTimeout(logoTimer); logoTimer=setTimeout(drawLogo,150); });
+
 // ================= boot =================
 (async function boot(){
   try{ state.status=await api('/api/status'); }catch(e){ state.status={}; }
