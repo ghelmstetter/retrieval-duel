@@ -449,7 +449,7 @@ async function ask(item,fresh=false){
   $('#routeWhy').textContent=r.route.reason+(r.route.by==='llm'?' (decided by Claude)':' (decided by simple rules)');
   animateVector(r.vector,run); animateGraph(r.graph,run);
   fillAnswers(item,r,run);
-  if(state.votes[item.id||item.q]) setTimeout(()=>{ if(run===state.run) showLesson(); }, REDUCED?0:2600);
+  if(state.votes[item.id||item.q]) setTimeout(()=>{ if(run===state.run) showLesson(); }, REDUCED||r.saved_at?0:2600);
 }
 
 function animateVector(v,run){
@@ -510,8 +510,8 @@ function animateGraph(g,run){
       .attr('opacity',0).transition().delay(tKey+200*d).duration(300*d).attr('opacity',1); });
 }
 
-function typeText(el,text,run,delay){
-  if(REDUCED){ el.textContent=text; return; }
+function typeText(el,text,run,delay,instant){
+  if(REDUCED||instant){ el.textContent=text; return; }
   setTimeout(()=>{ if(run!==state.run) return; el.innerHTML=''; let i=0; const cur=document.createElement('span'); cur.className='cursor';
     const tick=()=>{ if(run!==state.run) return; i=Math.min(text.length,i+3); el.textContent=text.slice(0,i); el.appendChild(cur); if(i<text.length) requestAnimationFrame(tick); else setTimeout(()=>cur.remove(),600); };
     tick(); },delay);
@@ -539,12 +539,13 @@ function fillAnswers(item,r,run){
     :'With an API key, Claude would answer from the evidence the router picked.';
   const gd=D();
   const failMsg=x=>x.error?`This one failed: ${x.error}`:null;
-  typeText($('#vecText'),failMsg(v)||v.answer||noAns('vector'),run,1300*gd);
-  typeText($('#grText'),failMsg(g)||g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd);
-  typeText($('#hyText'),failMsg(hy)||hy.answer||noAns('hybrid'),run,2100*gd);
+  const now=!!r.saved_at;  // saved results appear at once: nothing is being written
+  typeText($('#vecText'),failMsg(v)||v.answer||noAns('vector'),run,1300*gd,now);
+  typeText($('#grText'),failMsg(g)||g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd,now);
+  typeText($('#hyText'),failMsg(hy)||hy.answer||noAns('hybrid'),run,2100*gd,now);
   renderAgentSteps(ag,r,run);
   const agNo=ag.planner==='rules'?'Without an API key the agent follows simple rules instead of thinking, and can\'t write an answer. Its searches are shown below.':'With an API key, Claude would write this answer from everything the agent gathered.';
-  typeText($('#agText'),failMsg(ag)||ag.answer||agNo,run,(2400+ag.steps.length*450)*gd);
+  typeText($('#agText'),failMsg(ag)||ag.answer||agNo,run,(2400+ag.steps.length*450)*gd,now);
   if(!r.live && !r.canned) $('#hyNote').textContent+=' Live answers need an API key.';
   $('#footnote').textContent=r.live?`Retrieval ran on your computer. Answers were written live by ${state.status.answer_model}${r.vector.grade?', and graded against the reference answer by '+state.status.work_model:''}. Latency is measured; this question cost about $${(r.meter.dollars||0).toFixed(4)}.`
     :(r.canned?'Demo mode: retrieval ran live, but these answers were pre-written from exactly the evidence shown. Add an API key for live answers. Latency figures are typical values, not measurements.'
@@ -562,7 +563,7 @@ document.querySelectorAll('#votes button').forEach(b=>b.onclick=async ()=>{
 });
 function gradePill(sel,gr){ const el=$(sel); if(!gr){ el.hidden=true; return; } el.hidden=false; el.className='pill '+(gr.grade==='correct'?'ok':gr.grade==='wrong'?'bad':gr.grade); el.textContent=gr.grade==='correct'?'correct':gr.grade==='partial'?'partly right':gr.grade==='wrong'?'wrong or incomplete':'not graded'; el.title=gr.why||''; }
 function renderAgentSteps(ag,r,run){
-  const d=D(); const ol=$('#agSteps'); ol.innerHTML='';
+  const d=r.saved_at?0:D(); const ol=$('#agSteps'); ol.innerHTML='';
   const cost=s=>r.live&&s.tokens?`<span class="cost">${s.tokens.toLocaleString()} tok · $${s.dollars.toFixed(4)}</span>`:'';
   const html=ag.steps.map(s=>{
     if(s.kind==='plan') return `<li class="plan"><b>Plan.</b> ${esc(s.text)}${s.rewritten?`<span class="found">Rewrote the question as: <span class="q">"${esc(s.rewritten)}"</span></span>`:''}${cost(s)}</li>`;
