@@ -781,11 +781,10 @@ function drawLogo(){
   svg.setAttribute('viewBox',`0 0 ${W} ${W}`); svg.style.width=svg.style.height=W+'px';
   svg.innerHTML=`<defs><linearGradient id="rdEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3fd6c8"/><stop offset="1" stop-color="#ffb547"/></linearGradient></defs>
     <rect x="${sw/2}" y="${sw/2}" width="${W-sw}" height="${W-sw}" rx="${W*0.12}" fill="#0b1424" stroke="url(#rdEdge)" stroke-width="${sw}"/>
-    <text x="${pad}" y="${y1}" font-family="Oswald, 'Arial Narrow', sans-serif" font-weight="700" font-size="${fs1}" fill="#e9eef7">RETRIEVAL</text>
-    <text x="${pad}" y="${y2}" font-family="Oswald, 'Arial Narrow', sans-serif" font-weight="700" font-size="${fs2}" fill="#e9eef7">DUEL</text>`;
+    <text x="${pad}" y="${y1}" style="font-family:Oswald,'Arial Narrow',sans-serif;font-weight:700;font-size:${fs1}px" fill="#e9eef7">RETRIEVAL</text>
+    <text x="${pad}" y="${y2}" style="font-family:Oswald,'Arial Narrow',sans-serif;font-weight:700;font-size:${fs2}px" fill="#e9eef7">DUEL</text>`;
 }
-drawLogo();
-if(document.fonts&&document.fonts.load) document.fonts.load("700 100px 'Oswald'").then(drawLogo).catch(()=>{});
+if(document.fonts&&document.fonts.load){ document.fonts.load("700 100px 'Oswald'").then(drawLogo,drawLogo); setTimeout(drawLogo,2500); } else drawLogo();
 let logoTimer; window.addEventListener('resize',()=>{ clearTimeout(logoTimer); logoTimer=setTimeout(drawLogo,150); });
 
 // ================= boot =================
