@@ -24,6 +24,15 @@ const curMeta=()=>state.datasets.find(d=>d.slug===state.ds)||{};
 
 // ================= steps =================
 const STEPS=['basics','load','profile','duel','debrief'];
+function renderDsBar(step){
+  const show=['profile','duel','debrief'].includes(step) && !!state.data;
+  $('#dsBar').hidden=!show; if(!show) return;
+  const m=curMeta(), s=(state.data&&state.data.stats)||{};
+  $('#dsName').textContent=m.name||state.ds;
+  $('#dsStats').textContent=[s.docs!=null?`${s.docs} documents`:'', s.entities!=null?`${s.entities} entities`:'', s.communities!=null?`${s.communities} communities`:'',
+    m.demo?'demo':(m.catalog?'public dataset':'your data')].filter(Boolean).join(' · ');
+}
+$('#dsChange').onclick=()=>{ go('load'); window.scrollTo({top:0,behavior:REDUCED?'auto':'smooth'}); };
 function go(step){
   if(!STEPS.includes(step)) step='basics';
   if(['profile','duel','debrief'].includes(step) && !state.data){ step='load'; }
@@ -33,6 +42,7 @@ function go(step){
   if(step!=='load' && state.pending){ endPreview(); renderDatasets(); }
   $('#stage').hidden = step==='debrief'||step==='basics'||(step==='load'&&!!state.pending);
   $('#duelResults').hidden = !(step==='duel' && state.last);
+  renderDsBar(step);
   if(step==='profile') renderProfile();
   if(step==='duel') renderDeck();
   if(step==='debrief') renderDebrief();
@@ -382,15 +392,21 @@ async function ask(item){
   $('#duelResults').hidden=false; $('#lesson').hidden=true;
   ['#vecVerdict','#grVerdict','#hyVerdict','#agVerdict'].forEach(s=>$(s).hidden=true);
   $('#agSteps').innerHTML='';
-  ['#vecText','#grText','#hyText','#agText'].forEach(s=>$(s).innerHTML='<span style="color:var(--faint)">Searching…</span>');
+  const live=state.status.has_key;
+  const waitMsg={vecText:['vec','Searching passages'],grText:['gr','Walking the graph'],hyText:['hy','Routing, then searching'],agText:['ag','Planning, searching, checking']};
+  Object.entries(waitMsg).forEach(([id,[c,msg]])=>{ $('#'+id).innerHTML=`<span class="spin ${c}"><span>${msg}${live?' and writing an answer':''}…</span><span class="el" data-el></span></span>`; });
+  $('#vecBusy').hidden=$('#grBusy').hidden=false;
+  const t0=Date.now(); clearInterval(state.elTimer);
+  state.elTimer=setInterval(()=>{ const s=Math.round((Date.now()-t0)/1000); document.querySelectorAll('[data-el]').forEach(e=>e.textContent=s>=2?`${s} s`:''); },500);
   ['#vecEv','#grEv'].forEach(s=>$(s).innerHTML=''); $('#hyNote').textContent='';
-  $('#router').hidden=false; $('#routeWhy').textContent='Deciding…'; document.querySelectorAll('#router .route').forEach(x=>x.classList.remove('on'));
+  $('#router').hidden=false; $('#routeWhy').innerHTML='<span class="spin hy"><span>Deciding…</span></span>'; document.querySelectorAll('#router .route').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('#votes button').forEach(b=>b.setAttribute('aria-pressed',state.votes[item.id||item.q]&&state.votes[item.id||item.q].vote===b.dataset.v));
   const run=++state.run;
   if(!REDUCED) $('#stage').scrollIntoView({behavior:'smooth',block:'start'});
   let r; try{ r=await api(`/api/datasets/${state.ds}/ask`,{method:'POST',body:{question:item.q,sample_id:item.custom?null:item.id}}); }
-  catch(e){ if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message); } return; }
+  catch(e){ clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true; if(run===state.run){ $('#vecText').innerHTML=$('#grText').innerHTML=$('#hyText').innerHTML=$('#agText').innerHTML=''; showError('#lesson',e.message); } return; }
   if(run!==state.run) return;
+  clearInterval(state.elTimer); $('#vecBusy').hidden=$('#grBusy').hidden=true;
   state.last=r;
   document.querySelector('#router .route.'+r.route.route).classList.add('on');
   $('#routeWhy').textContent=r.route.reason+(r.route.by==='llm'?' (decided by Claude)':' (decided by simple rules)');
@@ -458,9 +474,8 @@ function animateGraph(g,run){
 }
 
 function typeText(el,text,run,delay){
-  el.innerHTML='';
   if(REDUCED){ el.textContent=text; return; }
-  setTimeout(()=>{ let i=0; const cur=document.createElement('span'); cur.className='cursor';
+  setTimeout(()=>{ if(run!==state.run) return; el.innerHTML=''; let i=0; const cur=document.createElement('span'); cur.className='cursor';
     const tick=()=>{ if(run!==state.run) return; i=Math.min(text.length,i+3); el.textContent=text.slice(0,i); el.appendChild(cur); if(i<text.length) requestAnimationFrame(tick); else setTimeout(()=>cur.remove(),600); };
     tick(); },delay);
 }

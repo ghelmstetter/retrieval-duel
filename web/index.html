@@ -296,6 +296,18 @@ a.btn{text-decoration:none;display:inline-block}
 .agsteps .q{color:#ffc2d4}
 .agsteps .found{display:block;color:var(--faint);font-size:12px}
 .agsteps .cost{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:6px}
+.dsbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--deck);padding:8px 10px 8px 14px}
+.dsbar b{font-family:var(--display);font-size:14px;font-weight:700}
+.dsbar #dsStats{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.dsbar .btn.small{padding:5px 10px;font-size:13px;margin-left:auto}
+.spin{display:inline-flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
+.spin::before{content:"";width:16px;height:16px;border-radius:50%;border:2px solid var(--line2);border-top-color:currentColor;animation:spin .8s linear infinite;flex:none}
+.spin.vec{color:var(--vec)} .spin.gr{color:var(--graph)} .spin.ag{color:var(--agent)} .spin.hy{color:#9ee6b8}
+.spin span{color:var(--muted)}
+.spin .el{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.panel .busy{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);z-index:2;background:rgba(11,20,36,.88);border:1px solid var(--line2);border-radius:99px;padding:8px 14px}
+@media (prefers-reduced-motion: reduce){ .spin::before{animation:none;border-top-color:var(--line2);border-right-color:currentColor} }
 .cap{padding:0 14px 12px;font-size:12.5px;color:var(--muted);line-height:1.45}
 .cap b{color:var(--fg);font-weight:600}
 /* slide animations, replayed each time a slide opens */
@@ -332,6 +344,13 @@ a.btn{text-decoration:none;display:inline-block}
     <button data-step="debrief"><span class="n">5</span><span class="lbl">Debrief</span></button>
   </nav>
 </header>
+
+<div class="dsbar" id="dsBar" hidden>
+  <span class="eyebrow">Dataset</span>
+  <b id="dsName"></b>
+  <span id="dsStats"></span>
+  <button class="btn ghost small" id="dsChange" type="button">Change dataset</button>
+</div>
 
 <!-- STEP 1 LOAD -->
 <section class="step" id="step-basics">
@@ -437,6 +456,7 @@ a.btn{text-decoration:none;display:inline-block}
     <div class="cap" style="padding-top:6px"><b>Each dot is one passage.</b> Dots close together say similar things. The pink dot is your question; the lit dots are the passages handed to the AI.</div>
     <svg id="vecSvg" viewBox="0 0 600 430" role="img" aria-label="Map of document passages by similarity"></svg>
     <div class="overlay" id="vecOverlay"></div>
+    <div class="busy spin vec" id="vecBusy" hidden><span>searching…</span></div>
     <div class="empty" id="vecEmpty"><div><b>Not indexed yet</b>passages will appear here</div></div>
   </div>
   <div class="panel gr" id="grPanel">
@@ -444,6 +464,7 @@ a.btn{text-decoration:none;display:inline-block}
     <div class="cap" style="padding-top:6px"><b>Each circle is a person, place or thing; each line is a relationship.</b> Shaded areas are communities. Pink rings mark what your question named; amber lines are the connections followed.</div>
     <svg id="grSvg" viewBox="0 0 600 430" role="img" aria-label="Knowledge graph of entities and relations"></svg>
     <div class="overlay" id="grOverlay"></div>
+    <div class="busy spin gr" id="grBusy" hidden><span>searching…</span></div>
     <div class="empty" id="grEmpty"><div><b>Not indexed yet</b>the knowledge graph will grow here</div></div>
   </div>
 </div>
