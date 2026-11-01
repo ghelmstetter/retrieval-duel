@@ -170,7 +170,7 @@ def summarize_community(comm, ebyid, relations, meter):
     try:
         data = llm.complete_json(SUMMARY_SYSTEM, user, task="summarize", max_tokens=800, meter=meter)
         return str(data.get("title", "Cluster"))[:40], str(data.get("summary", ""))
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, llm.EmptyReply):
         return "Cluster", ""
 
 

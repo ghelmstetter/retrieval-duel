@@ -422,6 +422,9 @@ def ask(slug, question, sample_id=None, fresh=False):
     key = _result_key(sample, question)
     if config.has_key() and not config.PUBLIC_DEMO and not fresh:
         saved = _read(results_path, {}).get(key)
+        # Ignore a saved result with a blank answer (from before empty replies were caught); it reruns.
+        if saved and any(saved["result"].get(n, {}).get("answer") == "" for n in ("vector", "graph", "hybrid", "agent")):
+            saved = None
         if saved:
             saved["result"]["saved_at"] = saved["saved_at"]
             return saved["result"]
@@ -547,7 +550,7 @@ def friendly_error(e):
         return "Claude rejected the API key. Check ANTHROPIC_API_KEY in .env."
     if "connection" in low:
         return "Couldn't reach Claude. Check your internet connection and run it again."
-    if "budget" in low:
+    if "budget" in low or "empty reply" in low:
         return msg
     return f"{name}: {msg[:200]}"
 

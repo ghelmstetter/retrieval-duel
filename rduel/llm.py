@@ -52,6 +52,10 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
+class EmptyReply(RuntimeError):
+    pass
+
+
 _client = None
 _client_lock = threading.Lock()
 
@@ -80,27 +84,34 @@ def complete(system, user, *, model=None, max_tokens=1500, task="", meter=None):
     path = _cache_path(key)
     if path.exists() and not (meter and meter.fresh):
         data = json.loads(path.read_text(encoding="utf-8"))
-        if meter:
-            meter.add(model, data["in"], data["out"], cached=True)
-        return data["text"]
+        if data.get("text", "").strip():  # an empty cached reply is treated as missing, so it's retried
+            if meter:
+                meter.add(model, data["in"], data["out"], cached=True)
+            return data["text"]
     if meter and meter.over_budget():
         raise BudgetExceeded(f"Stopped: this run passed the ${meter.budget:.2f} budget.")
 
-    if config.FAKE_LLM:
-        from .fake_llm import fake_complete
-        text = fake_complete(task, system, user)
-        tin, tout = len(system + user) // 4, len(text) // 4
-    else:
-        client = _get_client()
-        t0 = time.time()
-        resp = client.messages.create(model=model, max_tokens=max_tokens, system=system,
-                                      messages=[{"role": "user", "content": user}])
-        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        tin, tout = resp.usage.input_tokens, resp.usage.output_tokens
+    stop = ""
+    for attempt in range(2):  # an empty reply gets one automatic retry
+        if config.FAKE_LLM:
+            from .fake_llm import fake_complete
+            text = fake_complete(task, system, user)
+            tin, tout = len(system + user) // 4, len(text) // 4
+        else:
+            client = _get_client()
+            resp = client.messages.create(model=model, max_tokens=max_tokens, system=system,
+                                          messages=[{"role": "user", "content": user}])
+            text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+            tin, tout = resp.usage.input_tokens, resp.usage.output_tokens
+            stop = getattr(resp, "stop_reason", "") or ""
+        if meter:
+            meter.add(model, tin, tout)
+        if text.strip():
+            break
+    if not text.strip():  # never cache or return an empty answer
+        raise EmptyReply(f"Claude returned an empty reply twice (stop reason: {stop or 'unknown'}). Run it again.")
 
     path.write_text(json.dumps({"text": text, "in": tin, "out": tout, "model": model}), encoding="utf-8")
-    if meter:
-        meter.add(model, tin, tout)
     return text
 
 

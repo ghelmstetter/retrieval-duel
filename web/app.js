@@ -538,7 +538,7 @@ function fillAnswers(item,r,run){
     :who==='graph'?(g.mode==='global'?'This looked like a big-picture question, so GraphRAG would answer from the community summaries below.':(g.seeds.length?'With an API key, Claude would write this answer from the facts below, gathered by walking out from the entities your question named.':'Your question named nothing the graph knows about, so GraphRAG has nothing to work with. Try including a person, place or organization.'))
     :'With an API key, Claude would answer from the evidence the router picked.';
   const gd=D();
-  const failMsg=x=>x.error?`This one failed: ${x.error}`:null;
+  const failMsg=x=>x.error?`This one failed: ${x.error}`:(r.live&&x.answer==='')?'Claude returned an empty answer. Click Run again.':null;
   const now=!!r.saved_at;  // saved results appear at once: nothing is being written
   typeText($('#vecText'),failMsg(v)||v.answer||noAns('vector'),run,1300*gd,now);
   typeText($('#grText'),failMsg(g)||g.answer||noAns('graph'),run,(g.mode==='global'?2000:1500+g.hops.length*500)*gd,now);
